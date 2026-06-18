@@ -1,0 +1,18 @@
+---
+source: src/git_diff.rs
+expression: output
+---
+[src/main.rs]
+@@ -1 +1 @@
+-    println!("Hello, old world!");
++    println!("Hello, new world!");
+[src/utils.rs]
+@@ -10 +10 @@
+-    let mut result = Vec::new();
+-    for &byte in data {
+-        result.push(byte.wrapping_add(1));
+[…+14 -2 more lines]
+[README.md]
+@@ -5 +5 @@
+-It is designed to be lightweight and fast for all kinds of applications, parti…
++It is designed to be lightweight, fast, and extremely customizable for all kin…

@@ -1,4 +1,4 @@
-   Compiling rtk v0.1.0 (/mnt/c/Users/Andrea/dev/rtk)
+   Compiling rtk v0.1.0 (/path/to/rtk)
     Finished `test` profile [unoptimized + debuginfo] target(s) in 6.94s
      Running unittests src/main.rs (target/debug/deps/rtk-9a7fff56eeb1e7dc)
 

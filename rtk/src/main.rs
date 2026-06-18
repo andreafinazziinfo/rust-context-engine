@@ -60,6 +60,9 @@ enum Commands {
         /// Path to the directory to pack
         #[arg(default_value = ".")]
         path: String,
+        /// Strip comments and collapse consecutive empty lines
+        #[arg(short, long)]
+        strip: bool,
     },
     /// Print token savings statistics
     Stats,
@@ -102,8 +105,8 @@ fn main() {
         }
         Commands::Pytest { args } => run_filtered("pytest", &args, pytest_filter::filter),
         Commands::Ls { args } => run_filtered("ls", &args, ls_filter::filter),
-        Commands::Pack { path } => {
-            pack::pack_directory(Path::new(&path)).map(|packed| {
+        Commands::Pack { path, strip } => {
+            pack::pack_directory(Path::new(&path), strip).map(|packed| {
                 print!("{packed}");
             })
         }

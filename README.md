@@ -75,12 +75,12 @@ Estimated API Cost Saved: $3.2850 USD
 - Bash and `jq`
 
 ### Install
-Run the build script from the repository root:
+Run the installation script from the repository root:
 ```bash
-bash build.sh
+bash install.sh
 ```
 
 ---
 
 ## License
-MIT License. Free to use, modify, and distribute.
+Apache License 2.0. Free to use, modify, and distribute. See the [LICENSE](LICENSE) file for details.

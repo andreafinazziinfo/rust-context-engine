@@ -16,8 +16,8 @@ pub fn filter(input: &str) -> String {
         // Regex to parse GNU ls -l lines:
         // Group 1: permissions (e.g. -rw-r--r--)
         // Group 2: link count (e.g. 1)
-        // Group 3: owner (e.g. andrea)
-        // Group 4: group (e.g. andrea)
+        // Group 3: owner (e.g. username)
+        // Group 4: group (e.g. username)
         // Group 5: size in bytes (e.g. 1234)
         // Group 6: date/time (e.g. Jun 18 22:00 or Jun 18  2026)
         // Group 7: filename
@@ -114,13 +114,13 @@ mod tests {
     fn test_filter_ls_l() {
         let input = concat!(
             "total 32\n",
-            "drwxr-xr-x  5 andrea andrea 4096 Jun 18 22:00 .\n",
-            "-rw-r--r--  1 andrea andrea 1234 Jun 18 22:00 file1.txt\n",
-            "-rwxr-xr-x  1 andrea andrea 1048576 Jun 18 22:00 run.sh\n",
+            "drwxr-xr-x  5 username username 4096 Jun 18 22:00 .\n",
+            "-rw-r--r--  1 username username 1234 Jun 18 22:00 file1.txt\n",
+            "-rwxr-xr-x  1 username username 1048576 Jun 18 22:00 run.sh\n",
         );
         let out = filter(input);
         assert!(!out.contains("total 32"), "should drop total line");
-        assert!(!out.contains("andrea"), "should drop owner and group");
+        assert!(!out.contains("username"), "should drop owner and group");
         assert!(out.contains("drwxr-xr-x   4.0K Jun 18 22:00 ."), "incorrect directory formatting");
         assert!(out.contains("-rw-r--r--   1.2K Jun 18 22:00 file1.txt"), "incorrect file1 formatting");
         assert!(out.contains("-rwxr-xr-x   1.0M Jun 18 22:00 run.sh"), "incorrect run.sh formatting");
@@ -130,7 +130,7 @@ mod tests {
     fn test_ls_collapse() {
         let mut input = String::new();
         for i in 0..25 {
-            input.push_str(&format!("-rw-r--r--  1 andrea andrea 100 Jun 18 22:00 file{i}.txt\n"));
+            input.push_str(&format!("-rw-r--r--  1 username username 100 Jun 18 22:00 file{i}.txt\n"));
         }
         let out = filter(&input);
         let lines: Vec<&str> = out.lines().collect();

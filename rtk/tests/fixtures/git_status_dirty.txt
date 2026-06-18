@@ -1,51 +1,17 @@
 On branch main
+Your branch is up to date with 'origin/main'.
+
 Changes not staged for commit:
   (use "git add <file>..." to update what will be committed)
   (use "git restore <file>..." to discard changes in working directory)
-	modified:   .gitignore
+	modified:   src/main.rs
+	modified:   Cargo.toml
 
 Untracked files:
   (use "git add <file>..." to include in what will be committed)
-	.agent/
-	.agents/
-	.claude/
-	.cursor/
-	.cursorignore
-	.graphifyignore
-	1_ECOSYSTEM_AUDIT_REPORT.md
-	2_AUTONOMOUS_EVOLUTION_PLAN.md
-	3_GOD_MODE_SANITIZATION_PLAN.md
-	4_ARCHITECTURAL_AUDIT.md
-	AGENTS.md
-	AGENT_PROFILE.md
-	AI_RULES.md
-	AUDIT_RAW_DATA_V2.md
-	Audit v2 final.txt
-	CLAUDE.md
-	ENTERPRISE_AUDIT_MAY_2026.md
-	ENTERPRISE_AUDIT_V2_FINAL.md
-	KNOWLEDGE_GOVERNANCE_POLICY.md
-	RTK_TOOLCHAIN_PLAN.md
-	_audit_pass2_out.md
-	_audit_pass2_scan.py
-	control_plane_overhaul.md
-	cyclelab-terminal/
-	ecosystem_intelligence.md.resolved
-	graphify_error.txt
-	handler.txt
-	handler_ast.txt
-	implementation_plan.md.resolved
-	nexus.bat
-	repo github .txt
-	rtk/
-	scripts/bench/
-	scripts/graphify_export_obsidian.py
-	scripts/start-agent-stack.ps1
-	skills-lock.json
-	task.md.resolved
-	titan-industrial-forge/
-	ui_ux_overhaul_plan.md.resolved
-	verify-policy.sh
-	wiki/
+	README.md
+	tests/common.rs
+	src/filters/
+	docs/usage.md
 
 no changes added to commit (use "git add" and/or "git commit -a")

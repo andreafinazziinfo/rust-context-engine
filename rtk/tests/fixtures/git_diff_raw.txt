@@ -1,361 +1,45 @@
-diff --git a/.claude/skills/gitnexus/gitnexus-cli/SKILL.md b/.claude/skills/gitnexus/gitnexus-cli/SKILL.md
-index a10104a..cd9a83b 100644
---- a/.claude/skills/gitnexus/gitnexus-cli/SKILL.md
-+++ b/.claude/skills/gitnexus/gitnexus-cli/SKILL.md
-@@ -23,7 +23,7 @@ Run from the project root. This parses all source files, builds the knowledge gr
- | `--embeddings` | Enable embedding generation for semantic search (off by default) |
- | `--drop-embeddings` | Drop existing embeddings on rebuild. By default, an `analyze` without `--embeddings` preserves them. |
- 
--**When to run:** First time in a project, after major code changes, or when `gitnexus://repo/{name}/context` reports the index is stale. In Claude Code, a PostToolUse hook runs `analyze` automatically after `git commit` and `git merge`, preserving embeddings if previously generated.
-+**When to run:** First time in a project, after major code changes, or when `gitnexus://repo/{name}/context` reports the index is stale. In Claude Code, a PostToolUse hook detects staleness after `git commit` and `git merge` and notifies the agent to run `analyze` — the hook does not run analyze itself, to avoid blocking the agent for up to 120s and risking KuzuDB corruption on timeout.
- 
- ### status — Check index freshness
- 
-diff --git a/.cursor/rules/gitnexus.mdc b/.cursor/rules/gitnexus.mdc
-deleted file mode 100644
-index 73e2e2d..0000000
---- a/.cursor/rules/gitnexus.mdc
-+++ /dev/null
-@@ -1,43 +0,0 @@
--<!-- gitnexus:start -->
--# GitNexus — Code Intelligence
--
--This project is indexed by GitNexus as **CycleQuant-Terminal** (6077 symbols, 8896 relationships, 266 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
--
--> If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
--
--## Always Do
--
--- **MUST run impact analysis before editing any symbol.** Before modifying a function, class, or method, run `gitnexus_impact({target: "symbolName", direction: "upstream"})` and report the blast radius (direct callers, affected processes, risk level) to the user.
--- **MUST run `gitnexus_detect_changes()` before committing** to verify your changes only affect expected symbols and execution flows.
--- **MUST warn the user** if impact analysis returns HIGH or CRITICAL risk before proceeding with edits.
--- When exploring unfamiliar code, use `gitnexus_query({query: "concept"})` to find execution flows instead of grepping. It returns process-grouped results ranked by relevance.
--- When you need full context on a specific symbol — callers, callees, which execution flows it participates in — use `gitnexus_context({name: "symbolName"})`.
--
--## Never Do
--
--- NEVER edit a function, class, or method without first running `gitnexus_impact` on it.
--- NEVER ignore HIGH or CRITICAL risk warnings from impact analysis.
--- NEVER rename symbols with find-and-replace — use `gitnexus_rename` which understands the call graph.
--- NEVER commit changes without running `gitnexus_detect_changes()` to check affected scope.
--
--## Resources
--
--| Resource | Use for |
--|----------|---------|
--| `gitnexus://repo/CycleQuant-Terminal/context` | Codebase overview, check index freshness |
--| `gitnexus://repo/CycleQuant-Terminal/clusters` | All functional areas |
--| `gitnexus://repo/CycleQuant-Terminal/processes` | All execution flows |
--| `gitnexus://repo/CycleQuant-Terminal/process/{name}` | Step-by-step execution trace |
--
--## CLI
--
--| Task | Read this skill file |
--|------|---------------------|
--| Understand architecture / "How does X work?" | `.claude/skills/gitnexus/gitnexus-exploring/SKILL.md` |
--| Blast radius / "What breaks if I change X?" | `.claude/skills/gitnexus/gitnexus-impact-analysis/SKILL.md` |
--| Trace bugs / "Why is X failing?" | `.claude/skills/gitnexus/gitnexus-debugging/SKILL.md` |
--| Rename / extract / split / refactor | `.claude/skills/gitnexus/gitnexus-refactoring/SKILL.md` |
--| Tools, resources, schema reference | `.claude/skills/gitnexus/gitnexus-guide/SKILL.md` |
--| Index, status, clean, wiki CLI commands | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md` |
--
--<!-- gitnexus:end -->
-diff --git a/.cursor/rules/graphify.mdc b/.cursor/rules/graphify.mdc
-deleted file mode 100644
-index 15c0f7a..0000000
---- a/.cursor/rules/graphify.mdc
-+++ /dev/null
-@@ -1,10 +0,0 @@
-----
--description: graphify knowledge graph context
--alwaysApply: true
-----
--
--This project has a graphify knowledge graph at graphify-out/.
--
--- Before answering architecture or codebase questions, read graphify-out/GRAPH_REPORT.md for god nodes and community structure
--- If graphify-out/wiki/index.md exists, navigate it instead of reading raw files
--- After modifying code files in this session, run `graphify update .` to keep the graph current (AST-only, no API cost)
-diff --git a/AGENTS.md b/AGENTS.md
-index 5d5e597..87e3e88 100644
---- a/AGENTS.md
-+++ b/AGENTS.md
-@@ -1,7 +1,7 @@
- <!-- gitnexus:start -->
- # GitNexus — Code Intelligence
- 
--This project is indexed by GitNexus as **CycleQuant-Terminal** (6219 symbols, 9071 relationships, 266 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
-+This project is indexed by GitNexus as **CycleQuant-Terminal** (9067 symbols, 13581 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
- 
- > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
- 
-diff --git a/CLAUDE.md b/CLAUDE.md
-index 7c3ebba..87e3e88 100644
---- a/CLAUDE.md
-+++ b/CLAUDE.md
-@@ -1,152 +1,7 @@
--# CLAUDE.md
--
--This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
--
-----
--
--## Development Commands
--
--### Start the institutional stack (Timescale + pgvector + PgBouncer + Redis)
--
--```bash
--docker compose -f docker-compose.institutional.yml --env-file .env up -d --build
--```
--
--Postgres is **not** published on the host; use **PgBouncer** at `127.0.0.1:6432`. Redis is on `127.0.0.1:${REDIS_HOST_PORT:-6379}` for host-side tools (e.g. `scripts/mock_live_feed.py`).
--
--### Start the full stack (dev mode — hot reload)
--
--```bash
--docker compose -f docker-compose.yml -f docker-compose.dev.yml up
--```
--
--Services exposed on the host:
--- Frontend (Vite HMR): `http://localhost:13110` (or `FRONTEND_HOST_PORT`)
--- Backend API: `http://localhost:18110` (or `API_HOST_PORT`)
--- TimescaleDB: `localhost:15433`
--- Redis: `localhost:16380`
--
--### Backend — inside the container or with local Python env
--
--```bash
--# Lint
--ruff check .
--ruff format .
--
--# Run all tests
--pytest
--
--# Run a single test file
--pytest tests/test_matassa_adapter.py
--
--# Run a single test by name
--pytest tests/test_matassa_adapter.py::test_function_name
--```
--
--Ruff config lives in `backend/pyproject.toml`. The frozen Matassa core (`app/quant/proprietary/matassa_core/frozen/`) is excluded from lint.
--
--### Frontend
--
--```bash
--# From inside the frontend container or with local pnpm
--pnpm lint
--pnpm lint:fix
--pnpm build
--pnpm preview
--```
--
--### Environment setup
--
--```bash
--cp .env.example .env
--# Then edit POSTGRES_PASSWORD, AUTH_PASSWORD, JWT_SECRET_KEY, OPENAI_API_KEY (optional)
--```
--
--### Seed OHLCV data (one-off)
--
--```bash
--# Inside backend container
--python app/db/seed_ohlcv_hybrid.py
--# Uses CCXT (Binance) first, falls back to yfinance
--# Controlled via SEED_SYMBOL, SEED_TIMEFRAME, SEED_START_TS, SEED_END_TS env vars
--```
--
-----
--
--## Architecture
--
--### Docker Compose layers
--
--`docker-compose.yml` defines production services; `docker-compose.dev.yml` overrides them with bind mounts, hot-reload commands, and extra host ports. They are merged in dev with both `-f` flags. **RAG / pgvector** use the same Postgres as the rest of the app when you run `docker-compose.institutional.yml` (unified Timescale + `vector` extension); the old optional `docker-compose.rag.yml` has been removed.
--
--```
--frontend (Vue 3 SPA / Nginx)
--    │ REST + WebSocket (proxied via Vite in dev, Nginx in prod)
--backend (FastAPI)  ←→  Redis  ←→  worker (Celery)
--    │
--TimescaleDB (OHLCV time-series, cycle tables, optional pgvector for RAG)
--```
--
--### Backend (`backend/app/`)
--
--| Package | Role |
--|---|---|
--| `api/v1/` | FastAPI route handlers, one file per domain (`ohlcv.py`, `matassa_*.py`, `god_mode.py`, `backtest_status.py`, etc.) |
--| `api/matassa/` | Dedicated ingestion router for Matassa data |
--| `core/` | Config (Pydantic Settings), Redis client, DB connection, CORS/rate-limiter, JWT security |
--| `db/` | DB bootstrap, OHLCV seeding, pgvector RAG store, backtest/run-history repositories |
--| `repositories/` | Read-only repos for cycles and instruments |
--| `quant/` | All quantitative logic (see below) |
--| `workers/` | Celery app + tasks wrapping worker_shell logic; job state lives in Redis hashes |
--| `websockets/` | WebSocket endpoints: `terminal.py` (live feed), `cycles.py` (cycle events), `redis_cycles_bridge.py` (Redis PUB/SUB → WebSocket fan-out) |
--| `jobs/` | Redis job state machine (create/update/get_job) |
--| `backtest/`, `ingestion/` | Backtest pipeline and data ingestion utilities |
--
--**Startup**: `app/main.py` boots FastAPI, registers all routers, and launches `redis_cycles_listener` as a background asyncio task on lifespan start.
--
--**Settings**: All config is in `app/core/config.py` via Pydantic `Settings`. Feature flags (`vectorbt_adapter_enabled`, `matassa_adapter_enabled`, `backtest_use_async_worker`, etc.) control runtime behaviour without code changes.
--
--**Backtest flow**: `POST /api/v1/backtest/run` → if `BACKTEST_USE_ASYNC_WORKER=true`, enqueues a Celery task (Celery workers listen on queues `backtest,optimize`) and returns a `run_id` for polling via `GET /api/v1/backtest/status/{run_id}`; otherwise runs synchronously in the API process.
--
--### Quant layer (`backend/app/quant/`)
--
--- **`adapter_registry.py`**: Central registry of all strategy adapters. Adapters are enabled/disabled via feature flags in Settings. Add a new adapter here to make it selectable by the backtest pipeline.
--- **`metrics_contract.py` / `metrics_engine.py`**: Versioned output schema that all adapters must produce. Never change the contract without bumping `METRIC_VERSION`.
--- **`open/`**: Open-source adapters — seasonality, time-series, VectorBT SMA crossover.
--- **`proprietary/matassa_core/`**: The Matassa engine. The `frozen/` subdirectory contains immutable proprietary source files (`# NON MODIFICARE LA LOGICA CORE`). Wrappers and adapters must live outside `frozen/`; the frozen files are never edited.
--
--### Frontend (`frontend/src/`)
--
--**State management** (Pinia stores):
--
--| Store | Role |
--|---|---|
--| `stores/terminal.ts` | Active symbol, timeframe, `activeRunId`, UI selections |
--| `stores/pineBridge.ts` | WebSocket connection to `/api/v1/ws/terminal`; holds live OHLCV bars and KlineCharts-compatible data; auto-reconnects |
--| `stores/useMatassaStore.ts` | Fetches Matassa overlays (pivots, indicators, pattern matches) from the REST API; debounced on symbol/timeframe change; reads OHLCV from PineBridge |
--
--**Layout system**: `GoldenLayoutHost.vue` (and variants `GodModeLayoutHost.vue`, `SeasonalityGoldenLayoutHost.vue`) use Golden Layout v2 to render a panelised workspace. Panels are async-imported Vue components.
--
--**Main view**: `views/TerminalView.vue` composes the header (asset + timeframe selectors) and the GoldenLayout workspace. On mount it hydrates terminal state from a run ID (if any) and triggers the initial Matassa fetch. It watches `symbol`/`timeframe` to re-fetch automatically.
--
--**Charting**: KlineCharts v10-beta1 for candlestick rendering, ECharts for supplementary charts. Chart components live under `components/matassa/` and `components/charts/`.
--
--**WebSocket URL resolution**: `pineBridge.ts` resolves the WS URL at runtime. In dev, Vite proxies `/ws` → `/api/v1/ws` on the backend. In production, Nginx does the same. Override with `VITE_WS_URL` (absolute `ws://` / `wss://` URL) or `VITE_WS_TERMINAL_URL` for direct backend connection.
--
-----
--
--## Key Conventions
--
--- **Matassa frozen core** (`app/quant/proprietary/matassa_core/frozen/`): never edit these files. All integration goes through wrapper/adapter files one level above.
--- **Metrics contract**: all adapters output the same versioned schema defined in `metrics_contract.py`. Changes require a version bump.
--- **Job state**: backtest job lifecycle (PENDING → RUNNING → SUCCESS/FAILURE) is stored as Redis hashes, not in the DB. Celery handles process-level dispatch only.
--- **RAG module**: optional. Enable with `RAG_DATABASE_URL` and `OPENAI_API_KEY` (same Postgres as the app under institutional compose).
--- **Auth**: JWT-based (`/api/v1/auth/login`). Returns 503 if `JWT_SECRET_KEY` is not set. Default credentials from env: `AUTH_USERNAME` / `AUTH_PASSWORD`.
--
- <!-- gitnexus:start -->
- # GitNexus — Code Intelligence
- 
--This project is indexed by GitNexus as **CycleQuant-Terminal** (6219 symbols, 9071 relationships, 266 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
-+This project is indexed by GitNexus as **CycleQuant-Terminal** (9067 symbols, 13581 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
- 
- > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
- 
-diff --git a/backend/app/core/timescale.py b/backend/app/core/timescale.py
-index 2c699b1..294d75c 100644
---- a/backend/app/core/timescale.py
-+++ b/backend/app/core/timescale.py
-@@ -1,30 +1,91 @@
- from __future__ import annotations
- 
--from functools import lru_cache
-+import logging
- 
- from sqlalchemy import create_engine, text
- from sqlalchemy.engine import Engine
- 
- from app.core.config import get_settings
- 
-+logger = logging.getLogger(__name__)
- 
--@lru_cache
--def get_engine() -> Engine:
--    settings = get_settings()
--    return create_engine(settings.database_url, future=True, pool_pre_ping=True)
- 
-+class DatabaseManager:
-+    """
-+    Industrial-grade connection manager for TimescaleDB and pgvector.
-+    Provides connection pooling, health checks, and a circuit breaker
-+    to mitigate Single Point of Failure (SPOF) risks.
-+    """
-+    def __init__(self):
-+        self._engine: Engine | None = None
-+        self._rag_engine: Engine | None = None
-+        self._circuit_open = False
-+        self._failure_count = 0
-+        self._max_failures = 3
-+
-+    def get_engine(self) -> Engine:
-+        if self._circuit_open:
-+            raise RuntimeError("Circuit breaker open: Database is currently unreachable.")
-+            
-+        if self._engine is None:
-+            settings = get_settings()
-+            # Advanced pool settings for industrial load
-+            self._engine = create_engine(
-+                settings.database_url,
-+                future=True,
-+                pool_pre_ping=True,
-+                pool_size=20,
-+                max_overflow=10,
-+                pool_timeout=30.0,
-+                pool_recycle=1800
-+            )
-+        return self._engine
-+
-+    def get_rag_engine(self) -> Engine | None:
-+        if self._rag_engine is None:
-+            settings = get_settings()
-+            url = (settings.rag_database_url or "").strip()
-+            if not url:
-+                return None
-+            self._rag_engine = create_engine(
-+                url,
-+                future=True,
-+                pool_pre_ping=True,
-+                pool_size=5,
-+                max_overflow=5
-+            )
-+        return self._rag_engine
-+
-+    def health_check(self) -> bool:
-+        try:
-+            with self.get_engine().connect() as conn:
-+                conn.execute(text("SELECT 1"))
-+            self._failure_count = 0
-+            if self._circuit_open:
-+                logger.info("Database connection restored. Circuit closed.")
-+                self._circuit_open = False
-+            return True
-+        except Exception as e:
-+            self._failure_count += 1
-+            if self._failure_count >= self._max_failures:
-+                if not self._circuit_open:
-+                    logger.error(f"Database health check failed {self._max_failures} times. Circuit open! Error: {e}")
-+                self._circuit_open = True
-+            return False
- 
--@lru_cache
--def get_rag_engine() -> Engine | None:
--    """Separate Postgres with pgvector (migration/05_pgvector.sql). None if not configured."""
--    settings = get_settings()
--    url = (settings.rag_database_url or "").strip()
--    if not url:
--        return None
--    return create_engine(url, future=True, pool_pre_ping=True)
- 
-+# Singleton instance
-+manager = DatabaseManager()
-+
-+# -------------------------------------------------------------------------
-+# Legacy wrappers to maintain backward compatibility with the 59+ components
-+# -------------------------------------------------------------------------
-+
-+def get_engine() -> Engine:
-+    return manager.get_engine()
-+
-+def get_rag_engine() -> Engine | None:
-+    return manager.get_rag_engine()
- 
- def db_ping() -> bool:
--    with get_engine().connect() as conn:
--        conn.execute(text("SELECT 1"))
--    return True
-+    return manager.health_check()
+diff --git a/src/main.rs b/src/main.rs
+index e69de29..b85352c 100644
+--- a/src/main.rs
++++ b/src/main.rs
+@@ -1,8 +1,8 @@
+ fn main() {
+-    println!("Hello, old world!");
++    println!("Hello, new world!");
+     let x = 42;
+     println!("The answer is {}", x);
+ }
+diff --git a/src/utils.rs b/src/utils.rs
+index d2b535d..f824c3e 100644
+--- a/src/utils.rs
++++ b/src/utils.rs
+@@ -10,12 +10,24 @@
+ pub fn process_data(data: &[u8]) -> Vec<u8> {
+-    let mut result = Vec::new();
+-    for &byte in data {
+-        result.push(byte.wrapping_add(1));
+-    }
+-    result
++    // Optimized data processing implementation
++    let mut result = Vec::with_capacity(data.len());
++    for &byte in data {
++        if byte > 127 {
++            result.push(byte.wrapping_mul(2));
++        } else {
++            result.push(byte.wrapping_add(1));
++        }
++    }
++    // Additional check for padding bytes
++    if result.len() % 4 != 0 {
++        result.resize(result.len() + 4 - (result.len() % 4), 0);
++    }
++    result
+ }
+diff --git a/README.md b/README.md
+index a1a1a1a..b2b2b2b 100644
+--- a/README.md
++++ b/README.md
+@@ -5,3 +5,3 @@
+ This is a highly efficient library built in Rust that focuses on speed and minimal memory footprint.
+-It is designed to be lightweight and fast for all kinds of applications, particularly developer tools and wrappers.
++It is designed to be lightweight, fast, and extremely customizable for all kinds of applications, particularly high-performance developer tools, wrappers, and utilities.

@@ -7,7 +7,7 @@
     Checking regex v1.10.5
     Checking rusqlite v0.31.0
     Checking clap v4.5.9
-    Checking rtk v0.1.0 (/mnt/c/Users/Andrea/dev/rtk)
+    Checking rtk v0.1.0 (/path/to/rtk)
 warning: unused variable `total`
   --> src/tracking.rs:42:9
    |

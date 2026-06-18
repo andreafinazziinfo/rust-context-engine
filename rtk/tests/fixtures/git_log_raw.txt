@@ -1,122 +1,43 @@
-commit 35ada61764ec879920d0c59bd7b2306e18d4a6db
-Author: Andrea Finazzi <andreafinazzi.info@gmail.com>
-Date:   Sun May 17 03:03:44 2026 +0200
+commit e6a81c1dbd93e1b714578b66e138a0a93fe4c2b9
+Author: John Doe <john.doe@example.com>
+Date:   Wed Jun 17 14:23:10 2026 +0200
 
-    fix(agentic-tools): RTK probe uses python3 sqlite3 instead of sqlite3 CLI
+    feat: implement ls filter for directory listings
     
-    sqlite3 CLI not installed on this system (only libsqlite3-0).
-    Switch to python3 -c 'import sqlite3' which is always available.
-    DB path /home/andrev/.local/share/rtk/rtk.db confirmed present with
-    correct schema (tracking: id, cmd, original_tokens, filtered_tokens, timestamp).
-    
-    Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+    This filter strips owner and group metadata and collapses large listings
+    to avoid overloading the AI context window.
 
-commit bf1d7d05fc5e27c2111c680c53bda6d100fe00cd
-Author: Andrea Finazzi <andreafinazzi.info@gmail.com>
-Date:   Sun May 17 02:58:07 2026 +0200
+commit a8f3c7b3986a4e321b18c0cb8788a100fe00cd78
+Author: Jane Smith <jane.smith@example.com>
+Date:   Wed Jun 17 11:45:02 2026 +0200
 
-    fix(agentic-tools): spacing and arrow icons polish
+    fix: handle edge case with directory sizes in ls filter
     
-    - ⚠/✅ stamps: double space before time (⚠  21:03)
-    - ⚠  drift: double space for consistency
-    - 🕒 git time: add space (🕒 6m)
-    - 🛠 and 🏗: reduce to double space (was triple)
-    - ⬇️/⬆️ → ↓/↑ (1-wide ASCII arrows, no FE0F width issues)
-    
-    Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+    Ensures that empty directories display correctly as 0B instead of causing
+    an assertion failure.
 
 commit f4fdcae4b8a225261d84277a2bf812700dfe5329
-Author: Andrea Finazzi <andreafinazzi.info@gmail.com>
-Date:   Sun May 17 02:51:16 2026 +0200
+Author: John Doe <john.doe@example.com>
+Date:   Tue Jun 16 09:12:00 2026 +0200
 
-    fix(agentic-tools): space after ⚠/✅ in stamps, revert emoji over-padding
+    feat: add pytest warnings collapsing
     
-    Root cause: [⚠21:03] was the overlap, not 🔌/🕸.
-    - ⚠/✅ stamps now have space before time: [⚠ 21:03] [✅ 03:10]
-    - 🔌 back to single space (was fine)
-    - 🕸 back to double space (was fine)
-    
-    Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+    Collapses verbose deprecation warnings from pytest to save tokens
+    while keeping the main failure traceback.
 
 commit 3ca693b04afa865e186e892778560ec3f29389cf
-Author: Andrea Finazzi <andreafinazzi.info@gmail.com>
-Date:   Sun May 17 02:48:05 2026 +0200
+Author: Alice Johnson <alice.johnson@example.com>
+Date:   Mon Jun 15 16:30:15 2026 +0200
 
-    fix(agentic-tools): 3-space padding for wide emoji on line 3, ⚠ drift space
+    docs: update installation instructions in README
     
-    🛠/🕸/🏗 → 3 spaces; 🔌 → 2 spaces; ⚠drift → ⚠ drift.
-    Wider gap absorbs WSL/Windows Terminal wide-emoji column miscount.
-    
-    Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+    Clarified setup command and shell integration scripts configuration.
 
 commit cc871aa687c519077159141610d79c148eb2312c
-Author: Andrea Finazzi <andreafinazzi.info@gmail.com>
-Date:   Sun May 17 02:44:39 2026 +0200
+Author: Jane Smith <jane.smith@example.com>
+Date:   Sun Jun 14 22:10:45 2026 +0200
 
-    fix(agentic-tools): compact last-commit time and informative stamps
+    feat: support SQLite cache for raw command outputs
     
-    - Last commit: drop %cr git call, compute from LAST_COMMIT_EPOCH already
-      fetched; format as 14s/6m/2h/5d (no 'ago', no verbose words)
-    - Stamps: ✅HH:MM ⚠HH:MM ⚙️cfg — no internal spaces; stale now shows
-      the artifact's actual last-modified time instead of the word 'stale'
-    - Drift pattern updated: '⚠'* (no space) matches new stamp format;
-      drift label compressed to ⚠drift
-    
-    Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
-
-commit 487bae11bda2f7b27e02d79368f15ab92cb9a3c3
-Author: Andrea Finazzi <andreafinazzi.info@gmail.com>
-Date:   Sun May 17 02:31:50 2026 +0200
-
-    feat(agentic-tools): session duration, RTK probe, drift signal fix
-    
-    Session duration:
-    - Primary: cost.total_duration_ms from payload (confirmed in ccstatusline)
-    - Fallback: scan session JSON files matching normalized DIR_RAW (runs
-      after git rev-parse so comparison uses real workspace path)
-    - Format: compact 47m / 2h13m; placed inline with cost as 💵 $X ⌚ Nm
-    
-    RTK savings:
-    - Conditional probe: RTK_DB_PATH env → ~/.local/share/rtk/rtk.db →
-      ~/.config/rtk/rtk.db → AppData path
-    - Queries tracking table for today's savings %; silent if DB absent
-    - Segment omitted cleanly until RTK tracking DB is built
-    
-    Drift signal:
-    - Remove ⚙️ cfg from drift trigger — configured-only is neutral,
-      not a confirmed stale state
-    - Drift now fires only on ⚠ stale (artifact confirmed older than
-      last commit epoch); makes ⚠ drift a meaningful alert again
-    
-    Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
-
-commit 5647bd8f1884bdec59fc534f5aba89c80ffe2c41
-Author: Andrea Finazzi <andreafinazzi.info@gmail.com>
-Date:   Sun May 17 02:10:20 2026 +0200
-
-    docs(agentic-tools): sync spec with current script state
-    
-    - Layout §3: spaces between all emoji and text; 🕒 git: replaces
-      ⏱️ Ultimo:; {LOCK} {BRANCH} with explicit space; double space on
-      wide emoji (🕸, 🏗)
-    - §4 segments: ⏱️Ultimo → 🕒 git:; skills local count now includes
-      .agents/skills/ (171 files); ⚠ drift trigger pattern updated
-    - §5 states: all stamps updated (✅ HH:MM, ⚠ stale, ⚙️ cfg, 🟢/🔴
-      badges with spaces); GitNexus DB search adds .gitnexus/lbug
-    - §10 examples: all four repos re-rendered with current format
-    - §12 criteria: stamp patterns, .agents/skills/, .gitnexus/lbug,
-      🕒 git: label checks added
-    
-    Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
-
-commit 7a05cb07bdc02d24ed83c119500290896a7336cb
-Author: Andrea Finazzi <andreafinazzi.info@gmail.com>
-Date:   Sun May 17 02:04:56 2026 +0200
-
-    fix(agentic-tools): spacing and git icon on line 2
-    
-    - LOCK emoji (🔒/🔓) now has space before branch name
-    - 🕸 and 🏗 use double space (wide emoji need extra clearance)
-    - ⏱️ Ultimo: → 🕒 git: (clearer role, git keyword explicit)
-    
-    Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+    Full outputs are cached in SQLite. A token hash message is printed,
+    allowing users/agents to retrieve raw log via 'rtk show-log <id>'.
