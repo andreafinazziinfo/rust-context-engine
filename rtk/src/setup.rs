@@ -62,28 +62,42 @@ alwaysApply: true
 - Non fare affidamento solo sulle risposte del grafo se una ricerca locale (`grep` / `git diff`) può confermare lo stato dei file.
 "#;
 
+const RTK_TOOLKIT_CONTENT: &str = r#"---
+description: Guida all'uso di RTK CLI per ottimizzare il contesto e risparmiare token.
+alwaysApply: true
+---
+
+# RTK CLI & Context Optimization
+
+Questo repository utilizza **RTK CLI**, uno strumento per ottimizzare la verbosità dei comandi e archiviare i log nel database locale SQLite.
+
+## Comandi Intercettati (Log Virtualizzati)
+Quando esegui comandi standard come `git status`, `git diff`, `git log`, `cargo build`, `cargo test`, `pytest`, `ls` o `npm install`, l'output viene intercettato e filtrato per risparmiare token.
+- Se l'output viene compresso, vedrai un messaggio alla fine: `[Full output cached. Access with: rtk show-log <id>]`.
+- **IMPORTANTE**: Non rieseguire il comando per vedere i dettagli! Recupera il log completo usando:
+  ```bash
+  rtk show-log <id>
+  ```
+
+## Esplorazione Directory (`rtk pack`)
+Non importare intere cartelle o leggere file multipli consecutivamente. Usa `rtk pack` per generare una rappresentazione XML compatta:
+- Usa sempre `--strip` (o `-s`) per rimuovere commenti su riga singola e collassare righe vuote consecutive.
+- Usa `--limit <max_tokens>` (o `-l`) per specificare un budget di token ed evitare overflow del contesto.
+- Esempio:
+  ```bash
+  rtk pack . --strip --limit 30000
+  ```
+
+## Memoria Persistente (`rtk memory`)
+Utilizza la memoria SQLite isolata per il progetto per salvare e recuperare informazioni importanti tra le sessioni (come porte database, versioni di runtime, endpoint di test):
+- **Salva**: `rtk memory set <chiave> <valore>` (es: `rtk memory set db_port 5432`)
+- **Leggi**: `rtk memory get <chiave>`
+- **Elenca**: `rtk memory list` (esegui questo comando all'inizio di una nuova sessione di chat per sincronizzare il contesto!)
+"#;
+
 pub fn run_init() -> Result<()> {
     println!("⚙️ Bootstrapping AI Efficiency rules in the current directory...");
-
-    let cursor_rules_dir = Path::new(".cursor/rules");
-    let agents_rules_dir = Path::new(".agents/rules");
-
-    // Create directories
-    fs::create_dir_all(cursor_rules_dir)
-        .context("failed to create .cursor/rules directory")?;
-    fs::create_dir_all(agents_rules_dir)
-        .context("failed to create .agents/rules directory")?;
-
-    // Write rule files
-    fs::write(cursor_rules_dir.join("lazy-dev.mdc"), LAZY_DEV_CONTENT)
-        .context("failed to write lazy-dev.mdc to .cursor/rules")?;
-    fs::write(cursor_rules_dir.join("token-efficiency.mdc"), TOKEN_EFFICIENCY_CONTENT)
-        .context("failed to write token-efficiency.mdc to .cursor/rules")?;
-
-    fs::write(agents_rules_dir.join("lazy-dev.mdc"), LAZY_DEV_CONTENT)
-        .context("failed to write lazy-dev.mdc to .agents/rules")?;
-    fs::write(agents_rules_dir.join("token-efficiency.mdc"), TOKEN_EFFICIENCY_CONTENT)
-        .context("failed to write token-efficiency.mdc to .agents/rules")?;
+    run_init_in(Path::new("."))?;
 
     println!("✅ Created rules inside .cursor/rules/ and .agents/rules/");
     println!("");
@@ -119,3 +133,68 @@ pub fn run_init() -> Result<()> {
 
     Ok(())
 }
+
+fn run_init_in(base: &Path) -> Result<()> {
+    let cursor_rules_dir = base.join(".cursor").join("rules");
+    let agents_rules_dir = base.join(".agents").join("rules");
+
+    // Create directories
+    fs::create_dir_all(&cursor_rules_dir)
+        .context("failed to create .cursor/rules directory")?;
+    fs::create_dir_all(&agents_rules_dir)
+        .context("failed to create .agents/rules directory")?;
+
+    // Write rule files
+    fs::write(cursor_rules_dir.join("lazy-dev.mdc"), LAZY_DEV_CONTENT)
+        .context("failed to write lazy-dev.mdc to .cursor/rules")?;
+    fs::write(cursor_rules_dir.join("token-efficiency.mdc"), TOKEN_EFFICIENCY_CONTENT)
+        .context("failed to write token-efficiency.mdc to .cursor/rules")?;
+    fs::write(cursor_rules_dir.join("rtk-toolkit.mdc"), RTK_TOOLKIT_CONTENT)
+        .context("failed to write rtk-toolkit.mdc to .cursor/rules")?;
+
+    fs::write(agents_rules_dir.join("lazy-dev.mdc"), LAZY_DEV_CONTENT)
+        .context("failed to write lazy-dev.mdc to .agents/rules")?;
+    fs::write(agents_rules_dir.join("token-efficiency.mdc"), TOKEN_EFFICIENCY_CONTENT)
+        .context("failed to write token-efficiency.mdc to .agents/rules")?;
+    fs::write(agents_rules_dir.join("rtk-toolkit.mdc"), RTK_TOOLKIT_CONTENT)
+        .context("failed to write rtk-toolkit.mdc to .agents/rules")?;
+
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_run_init_in() {
+        let temp_dir = std::env::temp_dir().join(format!("rtk_init_test_{}", rand_suffix()));
+        fs::create_dir_all(&temp_dir).unwrap();
+
+        run_init_in(&temp_dir).unwrap();
+
+        assert!(temp_dir.join(".cursor/rules/lazy-dev.mdc").exists());
+        assert!(temp_dir.join(".cursor/rules/token-efficiency.mdc").exists());
+        assert!(temp_dir.join(".cursor/rules/rtk-toolkit.mdc").exists());
+
+        assert!(temp_dir.join(".agents/rules/lazy-dev.mdc").exists());
+        assert!(temp_dir.join(".agents/rules/token-efficiency.mdc").exists());
+        assert!(temp_dir.join(".agents/rules/rtk-toolkit.mdc").exists());
+
+        let lazy_dev = fs::read_to_string(temp_dir.join(".cursor/rules/lazy-dev.mdc")).unwrap();
+        assert_eq!(lazy_dev, LAZY_DEV_CONTENT);
+
+        let rtk_rules = fs::read_to_string(temp_dir.join(".agents/rules/rtk-toolkit.mdc")).unwrap();
+        assert_eq!(rtk_rules, RTK_TOOLKIT_CONTENT);
+
+        fs::remove_dir_all(temp_dir).unwrap();
+    }
+
+    fn rand_suffix() -> u32 {
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .subsec_nanos()
+    }
+}
+

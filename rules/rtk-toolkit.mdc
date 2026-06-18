@@ -1,0 +1,31 @@
+---
+description: Guida all'uso di RTK CLI per ottimizzare il contesto e risparmiare token.
+alwaysApply: true
+---
+
+# RTK CLI & Context Optimization
+
+Questo repository utilizza **RTK CLI**, uno strumento per ottimizzare la verbosità dei comandi e archiviare i log nel database locale SQLite.
+
+## Comandi Intercettati (Log Virtualizzati)
+Quando esegui comandi standard come `git status`, `git diff`, `git log`, `cargo build`, `cargo test`, `pytest`, `ls` o `npm install`, l'output viene intercettato e filtrato per risparmiare token.
+- Se l'output viene compresso, vedrai un messaggio alla fine: `[Full output cached. Access with: rtk show-log <id>]`.
+- **IMPORTANTE**: Non rieseguire il comando per vedere i dettagli! Recupera il log completo usando:
+  ```bash
+  rtk show-log <id>
+  ```
+
+## Esplorazione Directory (`rtk pack`)
+Non importare intere cartelle o leggere file multipli consecutivamente. Usa `rtk pack` per generare una rappresentazione XML compatta:
+- Usa sempre `--strip` (o `-s`) per rimuovere commenti su riga singola e collassare righe vuote consecutive.
+- Usa `--limit <max_tokens>` (o `-l`) per specificare un budget di token ed evitare overflow del contesto.
+- Esempio:
+  ```bash
+  rtk pack . --strip --limit 30000
+  ```
+
+## Memoria Persistente (`rtk memory`)
+Utilizza la memoria SQLite isolata per il progetto per salvare e recuperare informazioni importanti tra le sessioni (come porte database, versioni di runtime, endpoint di test):
+- **Salva**: `rtk memory set <chiave> <valore>` (es: `rtk memory set db_port 5432`)
+- **Leggi**: `rtk memory get <chiave>`
+- **Elenca**: `rtk memory list` (esegui questo comando all'inizio di una nuova sessione di chat per sincronizzare il contesto!)

@@ -223,7 +223,8 @@ alias npm="rtk npm"
 
 The toolkit contains standard `.mdc` instruction files (system rules) located in the `/rules` directory:
 1.  **`lazy-dev.mdc`**: Forces the AI agent to write minimal diffs, apply YAGNI (You Aren't Gonna Need It) code structures, and avoid writing boilerplate or documentation.
-2.  **`token-efficiency.mdc`**: Instructs the AI agent to use the virtualized SQLite logs and avoid importing whole directories into Cursor context.
+2.  **`token-efficiency.mdc`**: Instructs the AI agent to adopt token caps, brief responses, and use efficient MCP/Grep queries.
+3.  **`rtk-toolkit.mdc`**: Instructs the AI agent on how to use the `rtk` CLI tools (log virtualization, packing, memory) to optimize the context.
 
 ### Bootstrap Rules Instantly
 Instead of copying files manually, you can initialize the rules in your current directory by running:
