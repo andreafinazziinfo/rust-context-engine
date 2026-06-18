@@ -1,5 +1,5 @@
 commit e6a81c1dbd93e1b714578b66e138a0a93fe4c2b9
-Author: John Doe <john.doe@example.com>
+Author: User <user@example.com>
 Date:   Wed Jun 17 14:23:10 2026 +0200
 
     feat: implement ls filter for directory listings
@@ -8,7 +8,7 @@ Date:   Wed Jun 17 14:23:10 2026 +0200
     to avoid overloading the AI context window.
 
 commit a8f3c7b3986a4e321b18c0cb8788a100fe00cd78
-Author: Jane Smith <jane.smith@example.com>
+Author: User <user@example.com>
 Date:   Wed Jun 17 11:45:02 2026 +0200
 
     fix: handle edge case with directory sizes in ls filter
@@ -17,7 +17,7 @@ Date:   Wed Jun 17 11:45:02 2026 +0200
     an assertion failure.
 
 commit f4fdcae4b8a225261d84277a2bf812700dfe5329
-Author: John Doe <john.doe@example.com>
+Author: User <user@example.com>
 Date:   Tue Jun 16 09:12:00 2026 +0200
 
     feat: add pytest warnings collapsing
@@ -26,7 +26,7 @@ Date:   Tue Jun 16 09:12:00 2026 +0200
     while keeping the main failure traceback.
 
 commit 3ca693b04afa865e186e892778560ec3f29389cf
-Author: Alice Johnson <alice.johnson@example.com>
+Author: User <user@example.com>
 Date:   Mon Jun 15 16:30:15 2026 +0200
 
     docs: update installation instructions in README
@@ -34,7 +34,7 @@ Date:   Mon Jun 15 16:30:15 2026 +0200
     Clarified setup command and shell integration scripts configuration.
 
 commit cc871aa687c519077159141610d79c148eb2312c
-Author: Jane Smith <jane.smith@example.com>
+Author: User <user@example.com>
 Date:   Sun Jun 14 22:10:45 2026 +0200
 
     feat: support SQLite cache for raw command outputs
