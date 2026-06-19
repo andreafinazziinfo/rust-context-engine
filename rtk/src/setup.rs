@@ -87,11 +87,23 @@ Non importare intere cartelle o leggere file multipli consecutivamente. Usa `rtk
   rtk pack . --strip --limit 30000
   ```
 
-## Memoria Persistente (`rtk memory`)
-Utilizza la memoria SQLite isolata per il progetto per salvare e recuperare informazioni importanti tra le sessioni (come porte database, versioni di runtime, endpoint di test):
+## Memoria Persistente (`rtk memory`) & Stale Context
+Utilizza la memoria SQLite isolata per il progetto per salvare e recuperare informazioni importanti tra le sessioni:
 - **Salva**: `rtk memory set <chiave> <valore>` (es: `rtk memory set db_port 5432`)
 - **Leggi**: `rtk memory get <chiave>`
 - **Elenca**: `rtk memory list` (esegui questo comando all'inizio di una nuova sessione di chat per sincronizzare il contesto!)
+- **STALE CONTEXT RULE**: Se modifichi l'architettura o le dipendenze, il database FTS diventerà stantio. **DEVI** sovrascrivere in modo proattivo le vecchie regole o logiche tramite `rtk memory set <key>` per evitare allucinazioni in futuro.
+
+## Hidden Chain of Thought (`rtk think`)
+Quando risolvi bug complessi o scrivi algoritmi intricati, la "Chain of Thought" inquinerà permanentemente la Context Window.
+- **NON** scrivere lunghi ragionamenti in chat.
+- Invia il tuo ragionamento a `rtk think` usando una pipe:
+  ```bash
+  cat << 'EOF' | rtk think
+  Il mio ragionamento su come risolvere questo bug...
+  EOF
+  ```
+- Nella chat, stampa solo un breve riassunto (es: "Ho elaborato la logica tramite rtk think, applico la soluzione.").
 "#;
 
 const PONYTAIL_CONTENT: &str = include_str!("../assets/ponytail.mdc");

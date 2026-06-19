@@ -23,6 +23,7 @@ mod setup;
 mod skeleton;
 mod status;
 mod sync_rules;
+mod think;
 mod tracking;
 
 #[derive(Parser)]
@@ -83,6 +84,12 @@ enum Commands {
     Dotnet {
         #[arg(trailing_var_arg = true)]
         args: Vec<String>,
+    },
+    /// Store LLM Chain-of-Thought in the semantic memory instead of polluting the chat window
+    Think {
+        /// Optional text to store (if not provided, reads from stdin)
+        #[arg(trailing_var_arg = true)]
+        content: Vec<String>,
     },
     /// Run a pytest invocation with filtered output
     Pytest {
@@ -236,6 +243,7 @@ fn main() {
             dotnet::execute_dotnet(&args);
             Ok(())
         },
+        Commands::Think { content } => think::run(content),
         Commands::Pytest { args } => run_filtered("pytest", &args, pytest_filter::filter),
         Commands::Ls { args } => run_filtered("ls", &args, ls_filter::filter),
         Commands::Gradle { args } => run_filtered(&get_gradle_bin(), &args, gradle::filter),
