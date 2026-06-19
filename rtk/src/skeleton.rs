@@ -30,7 +30,7 @@ fn skeletonize_ast(content: &str, extension: &str) -> Option<String> {
         _ => return None,
     };
 
-    parser.set_language(&language.into()).ok()?;
+    parser.set_language(&language).ok()?;
     let tree = parser.parse(content, None)?;
     let root = tree.root_node();
 
