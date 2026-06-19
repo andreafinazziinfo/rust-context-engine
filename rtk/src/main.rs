@@ -20,6 +20,7 @@ mod pytest_filter;
 mod rewrite;
 mod setup;
 mod skeleton;
+mod status;
 mod sync_rules;
 mod tracking;
 
@@ -114,7 +115,13 @@ enum Commands {
         id: i64,
     },
     /// Bootstrap AI Efficiency rules in the current directory
-    Init,
+    Init {
+        /// The savings profile to use: low, medium, high, max
+        #[arg(long, default_value = "high")]
+        profile: String,
+    },
+    /// Show the current RTK status and active profile
+    Status,
     /// Force database garbage collection of logs older than 30 days
     Gc,
     /// Manage global personal configurations (guards, DLP patterns)
@@ -251,7 +258,8 @@ fn main() {
         Commands::ShowLog { id } => tracking::get_raw_log(id).map(|raw_log| {
             print!("{raw_log}");
         }),
-        Commands::Init => setup::run_init(),
+        Commands::Init { profile } => setup::run_init(&profile),
+        Commands::Status => crate::status::run_status(),
         Commands::Gc => tracking::gc().map(|purged| {
             println!("🗑️ Database garbage collection complete: removed {} log records older than 30 days.", purged);
         }),
