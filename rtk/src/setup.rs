@@ -113,6 +113,9 @@ pub fn run_init(profile: &str) -> Result<()> {
     // Automatically try to install the shell hook into Claude/Gemini settings.json
     let _ = auto_install_hook();
 
+    // Automatically append aliases to .bashrc / .zshrc
+    let aliases_installed = auto_install_aliases().unwrap_or(false);
+
     // Create user default config.json
     if crate::config::create_default_config().is_ok() {
         if let Some(home) = std::env::var_os("USERPROFILE").or_else(|| std::env::var_os("HOME")) {
@@ -128,32 +131,38 @@ pub fn run_init(profile: &str) -> Result<()> {
     println!("==========================================================");
     println!("🎉 RTK AI Rules Bootstrapped Successfully!");
     println!("==========================================================");
-    println!("To complete your setup:");
-    println!("1. Activate transparent terminal filtering in Claude Code by adding");
-    println!("   the PreToolUse hook to your .claude/settings.json:");
-    println!();
-    println!("   \"hooks\": {{");
-    println!("     \"PreToolUse\": [");
-    println!("       {{");
-    println!("         \"matcher\": \"Bash\",");
-    println!("         \"hooks\": [");
-    println!("           {{");
-    println!("             \"type\": \"command\",");
-    println!("             \"command\": \"bash /path/to/ai-token-saver/hooks/rtk-rewrite.sh\",");
-    println!("             \"timeout\": 5000");
-    println!("           }}");
-    println!("         ]]");
-    println!("       }}");
-    println!("     ]");
-    println!("   }}");
-    println!();
-    println!("2. Add shell aliases to your ~/.bashrc or ~/.zshrc for CLI wrappers:");
-    println!("   alias git=\"rtk git\"");
-    println!("   alias cargo=\"rtk cargo\"");
-    println!("   alias pytest=\"rtk pytest\"");
-    println!("   alias ls=\"rtk ls\"");
-    println!("   alias npm=\"rtk npm\"");
-    println!("==========================================================");
+    
+    if !aliases_installed {
+        println!("To complete your setup:");
+        println!("1. Activate transparent terminal filtering in Claude Code by adding");
+        println!("   the PreToolUse hook to your .claude/settings.json:");
+        println!();
+        println!("   \"hooks\": {{");
+        println!("     \"PreToolUse\": [");
+        println!("       {{");
+        println!("         \"matcher\": \"Bash\",");
+        println!("         \"hooks\": [");
+        println!("           {{");
+        println!("             \"type\": \"command\",");
+        println!("             \"command\": \"bash /path/to/ai-token-saver/hooks/rtk-rewrite.sh\",");
+        println!("             \"timeout\": 5000");
+        println!("           }}");
+        println!("         ]]");
+        println!("       }}");
+        println!("     ]");
+        println!("   }}");
+        println!();
+        println!("2. Add shell aliases to your ~/.bashrc or ~/.zshrc for CLI wrappers:");
+        println!("   alias git=\"rtk git\"");
+        println!("   alias cargo=\"rtk cargo\"");
+        println!("   alias pytest=\"rtk pytest\"");
+        println!("   alias ls=\"rtk ls\"");
+        println!("   alias npm=\"rtk npm\"");
+        println!("   alias yarn=\"rtk yarn\"");
+        println!("   alias pnpm=\"rtk pnpm\"");
+        println!("   alias dotnet=\"rtk dotnet\"");
+        println!("==========================================================");
+    }
 
     Ok(())
 }
@@ -296,6 +305,50 @@ You are operating under the RTK LOW profile for safe efficiency.
     }
 
     Ok(())
+}
+
+const ALIASES_BLOCK: &str = r#"
+# RTK AI Token Saver Aliases
+alias git="rtk git"
+alias cargo="rtk cargo"
+alias pytest="rtk pytest"
+alias ls="rtk ls"
+alias npm="rtk npm"
+alias yarn="rtk yarn"
+alias pnpm="rtk pnpm"
+alias dotnet="rtk dotnet"
+alias composer="rtk composer"
+alias terraform="rtk terraform"
+"#;
+
+fn auto_install_aliases() -> Result<bool> {
+    let home = std::env::var_os("USERPROFILE")
+        .or_else(|| std::env::var_os("HOME"))
+        .map(std::path::PathBuf::from);
+
+    if let Some(h) = home {
+        let mut installed = false;
+        let shells = [".bashrc", ".zshrc", ".profile"];
+        
+        for shell in shells {
+            let path = h.join(shell);
+            if path.exists() {
+                let content = fs::read_to_string(&path).unwrap_or_default();
+                if !content.contains("RTK AI Token Saver Aliases") {
+                    let mut file = fs::OpenOptions::new().append(true).open(&path)?;
+                    use std::io::Write;
+                    writeln!(file, "{}", ALIASES_BLOCK)?;
+                    println!("🎉 Added RTK aliases to: {}", path.display());
+                    installed = true;
+                } else {
+                    println!("ℹ️ RTK aliases already present in: {}", path.display());
+                    installed = true;
+                }
+            }
+        }
+        return Ok(installed);
+    }
+    Ok(false)
 }
 
 fn auto_install_hook() -> Result<()> {
