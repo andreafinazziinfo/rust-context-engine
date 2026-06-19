@@ -1,4 +1,11 @@
-# AI Token Saver 🚀
+# AI Token Saver (RTK) 🚀
+
+[![CI](https://github.com/andreafinazziinfo/ai-token-saver/actions/workflows/ci.yml/badge.svg)](https://github.com/andreafinazziinfo/ai-token-saver/actions/workflows/ci.yml)
+[![Release Builds](https://github.com/andreafinazziinfo/ai-token-saver/actions/workflows/release.yml/badge.svg)](https://github.com/andreafinazziinfo/ai-token-saver/actions/workflows/release.yml)
+[![CodeQL](https://github.com/andreafinazziinfo/ai-token-saver/actions/workflows/codeql.yml/badge.svg)](https://github.com/andreafinazziinfo/ai-token-saver/actions/workflows/codeql.yml)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+
+**Tags:** `ai-tools`, `rust`, `cli`, `claude-code`, `cursor`, `windsurf`, `developer-tools`, `token-saver`, `cost-optimization`, `context-window`, `llm`, `rag`
 
 A high-performance, token-efficient developer toolchain designed to optimize context windows, cut API costs, and improve execution speed for AI coding assistants (such as Claude Code, Cursor, Windsurf, Antigravity, and Gemini).
 
@@ -17,6 +24,7 @@ RTK operates on two fronts: **Input Virtualization** (filtering what the AI read
 | **Context Packing** | `rtk pack . -s -k` minifies code, strips comments, and generates **tree-sitter based** function skeletons into XML. | **~40%** (Input) |
 | **Data Loss Prevention** | Automatically redacts API keys, credentials, and custom regex patterns from logs. | Security |
 | **Semantic Memory** | `rtk memory set/get` lets AI save project notes across chat sessions in a local **SQLite FTS5 Vectorized** DB. | Time / Cost |
+| **Hidden Chain-of-Thought**| `cat <<EOF \| rtk think` allows AI to offload deep architectural reasoning to SQLite instead of polluting the context window. | **~90%** (Output) |
 | **Dynamic Autonomy** | Automatic warning generation when the CLI output exceeds 3000 tokens, enforcing agent synthesis. | Cost |
 
 ### 📊 Token Savings Benchmarks
@@ -78,7 +86,8 @@ alias git="rtk git"; alias cargo="rtk cargo"; alias pytest="rtk pytest"; alias l
 *   **Input Wrappers**: `rtk git status`, `rtk git diff`, `rtk git log`, `rtk cargo test`, `rtk cargo build`, `rtk pytest`, `rtk docker`, `rtk npm`, `rtk gradle`, `rtk go test`, `rtk ls`.
 *   **Context Virtualization**: `rtk show-log <id>` (reads full uncompressed log), `rtk gc` (cleans old DB logs and reclaims space).
 *   **Directory Packing**: `rtk pack [path] [--strip] [--skeleton] [--limit 50000]`.
-*   **Project Memory**: `rtk memory set <key> <val>`, `rtk memory get <key>`, `rtk memory list`.
+*   **Project Memory & Search**: `rtk memory set <key> <val>`, `rtk memory get <key>`, `rtk memory list`, `rtk memory search <query>`.
+*   **Hidden Chain-of-Thought**: `rtk think` (reads from stdin to store reasoning in the FTS5 DB out of the chat context).
 *   **Rules & Profiles**: `rtk init --profile <low|medium|high|max>`, `rtk sync-rules` (recursively mirrors `.cursor/rules` to subprojects).
 *   **Telemetry & Status**: `rtk status`, `rtk stats`, `rtk dashboard`.
 
@@ -157,8 +166,10 @@ graph TD
 
 1. **Intercepted Commands**: Running standard tools (e.g., `pytest`, `cargo test`) yields filtered outputs. If a log is truncated, a cache note appears. **DO NOT re-run the command** to view failures; instead, run `rtk show-log <id>` to retrieve the raw database record.
 2. **Context Packaging**: DO NOT execute `cat` on many files. Use `rtk pack . --strip` to read directories. Pass `--limit <max_tokens>` to prevent overflows.
-3. **Long-Term State Memory**: Use `rtk memory set/get` to save project-specific settings (like open ports, DB URLs, architecture decisions) across chat sessions.
-4. **Behavioral Rules**: RTK enforces *Ponytail* and *Caveman* styles. Implement the minimal amount of code possible. **DO NOT write boilerplate, unrequested features, or restructure folders.** Keep diffs extremely narrow.
+3. **Long-Term State Memory**: Use `rtk memory set/get` to save project-specific settings (like open ports, DB URLs, architecture decisions) across chat sessions. Use `rtk memory search` for semantic retrieval.
+4. **Hidden Chain-of-Thought**: When solving complex logic, **DO NOT write long reasoning in the chat**. Pipe it to `rtk think` (e.g., `cat << 'EOF' | rtk think`) to save output tokens, and only print a brief summary to the user.
+5. **Stale Context Rule**: If you modify the project's architecture, you MUST proactively overwrite old rules using `rtk memory set <key> <val>` to prevent stale RAG context hallucinations.
+6. **Behavioral Rules**: RTK enforces *Ponytail* and *Caveman* styles. Implement the minimal amount of code possible. **DO NOT write boilerplate, unrequested features, or restructure folders.** Keep diffs extremely narrow.
 
 ---
 
