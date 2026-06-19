@@ -442,6 +442,7 @@ dependencies = [
  "lazy_static",
  "regex",
  "rusqlite",
+ "serde_json",
 ]
 
 [[package]]

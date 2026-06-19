@@ -5,7 +5,7 @@ use std::path::Path;
 /// Packs directory contents into a single XML representation.
 /// Respects ignore patterns (.gitignore, .rtkignore, and standard defaults)
 /// and optional content minification/stripping.
-pub fn pack_directory(dir_path: &Path, strip: bool) -> Result<String> {
+pub fn pack_directory(dir_path: &Path, strip: bool, skeleton: bool) -> Result<String> {
     let mut out = String::new();
     out.push_str("<repository>\n");
 
@@ -20,6 +20,7 @@ pub fn pack_directory(dir_path: &Path, strip: bool) -> Result<String> {
         &canonical_root,
         &ignore_patterns,
         strip,
+        skeleton,
         &mut out,
     )?;
 
@@ -124,6 +125,7 @@ fn pack_recursive(
     current: &Path,
     ignore_patterns: &[String],
     strip: bool,
+    skeleton: bool,
     out: &mut String,
 ) -> Result<()> {
     let relative_path = current
@@ -139,7 +141,7 @@ fn pack_recursive(
     if current.is_dir() {
         for entry in fs::read_dir(current)? {
             let entry = entry?;
-            pack_recursive(root, &entry.path(), ignore_patterns, strip, out)?;
+            pack_recursive(root, &entry.path(), ignore_patterns, strip, skeleton, out)?;
         }
     } else if current.is_file() {
         if is_binary_file(current) {
@@ -152,16 +154,23 @@ fn pack_recursive(
                 .and_then(|e| e.to_str())
                 .unwrap_or_default();
 
-            let processed_content = if strip {
+            let mut processed = if strip {
                 strip_content(&content, ext)
             } else {
                 content
             };
 
+            if skeleton {
+                processed = crate::skeleton::skeletonize(&processed, ext);
+            }
+
+            // Always run DLP sensitive data scrubbing for safety
+            let redacted = crate::dlp::redact(&processed);
+
             out.push_str(&format!("  <file path=\"{relative_path}\">\n"));
             out.push_str("    <![CDATA[\n");
-            out.push_str(&processed_content);
-            if !processed_content.ends_with('\n') {
+            out.push_str(&redacted);
+            if !redacted.ends_with('\n') {
                 out.push('\n');
             }
             out.push_str("    ]]>\n");
@@ -232,7 +241,7 @@ mod tests {
         fs::write(&file2_path, &[0, 1, 2, 3]).unwrap();
 
         // Pack directory without strip
-        let packed = pack_directory(&temp_dir, false).unwrap();
+        let packed = pack_directory(&temp_dir, false, false).unwrap();
         assert!(packed.contains("<repository>"));
         assert!(packed.contains("<file path=\"main.rs\">"));
         assert!(packed.contains("fn main() {}"));
@@ -280,11 +289,35 @@ mod tests {
         let ignore_path = temp_dir.join(".rtkignore");
         fs::write(&ignore_path, "secrets.txt\n").unwrap();
 
-        let packed = pack_directory(&temp_dir, false).unwrap();
+        let packed = pack_directory(&temp_dir, false, false).unwrap();
         assert!(
             !packed.contains("<file path=\"secrets.txt\">"),
             "should respect custom .rtkignore patterns"
         );
+
+        fs::remove_dir_all(&temp_dir).ok();
+    }
+
+    #[test]
+    fn test_pack_dlp_and_skeleton() {
+        let temp_dir =
+            std::env::temp_dir().join(format!("rtk_pack_dlp_test_{}", std::process::id()));
+        fs::create_dir_all(&temp_dir).unwrap();
+
+        let file_path = temp_dir.join("main.rs");
+        let content = "\
+// A comment
+const API_KEY: &str = \"sk-proj-1234567890abcdef1234567890abcdef12345678\";
+fn test() {
+    let x = 10;
+}
+";
+        fs::write(&file_path, content).unwrap();
+
+        let packed = pack_directory(&temp_dir, false, true).unwrap();
+        assert!(packed.contains("[REDACTED_API_KEY]"));
+        assert!(!packed.contains("sk-proj-"));
+        assert!(!packed.contains("let x = 10"));
 
         fs::remove_dir_all(&temp_dir).ok();
     }

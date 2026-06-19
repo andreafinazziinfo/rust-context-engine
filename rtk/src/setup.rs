@@ -101,6 +101,10 @@ pub fn run_init() -> Result<()> {
 
     println!("✅ Created rules inside .cursor/rules/ and .agents/rules/");
     println!();
+
+    // Automatically try to install the shell hook into Claude/Gemini settings.json
+    let _ = auto_install_hook();
+
     println!("==========================================================");
     println!("🎉 RTK AI Rules Bootstrapped Successfully!");
     println!("==========================================================");
@@ -172,6 +176,115 @@ fn run_init_in(base: &Path) -> Result<()> {
     Ok(())
 }
 
+fn auto_install_hook() -> Result<()> {
+    let current_dir = std::env::current_dir()?;
+    let hook_path = current_dir.join("hooks").join("rtk-rewrite.sh");
+    if !hook_path.exists() {
+        return Ok(()); // Not in the main repository, skip auto-installation
+    }
+    let hook_path_str = hook_path
+        .canonicalize()?
+        .to_string_lossy()
+        .replace('\\', "/");
+
+    let home = std::env::var_os("USERPROFILE")
+        .or_else(|| std::env::var_os("HOME"))
+        .map(std::path::PathBuf::from);
+
+    if let Some(h) = home {
+        let dirs = vec![h.join(".gemini").join("antigravity"), h.join(".claude")];
+        for dir in dirs {
+            if dir.exists() {
+                let path = dir.join("settings.json");
+                let mut json = if path.exists() {
+                    let content = fs::read_to_string(&path).unwrap_or_default();
+                    serde_json::from_str::<serde_json::Value>(&content)
+                        .unwrap_or_else(|_| serde_json::Value::Object(serde_json::Map::new()))
+                } else {
+                    serde_json::Value::Object(serde_json::Map::new())
+                };
+
+                inject_hook_value(&mut json, &hook_path_str);
+
+                if let Ok(pretty) = serde_json::to_string_pretty(&json) {
+                    if fs::write(&path, pretty).is_ok() {
+                        println!(
+                            "🎉 Automatically configured Claude/Gemini settings hook in: {}",
+                            path.display()
+                        );
+                    }
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+fn inject_hook_value(json: &mut serde_json::Value, hook_path: &str) {
+    if !json.is_object() {
+        *json = serde_json::Value::Object(serde_json::Map::new());
+    }
+    let obj = json.as_object_mut().unwrap();
+    if !obj.contains_key("hooks") || !obj["hooks"].is_object() {
+        obj.insert(
+            "hooks".to_string(),
+            serde_json::Value::Object(serde_json::Map::new()),
+        );
+    }
+    let hooks_obj = obj.get_mut("hooks").unwrap().as_object_mut().unwrap();
+
+    if !hooks_obj.contains_key("PreToolUse") || !hooks_obj["PreToolUse"].is_array() {
+        hooks_obj.insert(
+            "PreToolUse".to_string(),
+            serde_json::Value::Array(Vec::new()),
+        );
+    }
+    let pre_tool_array = hooks_obj
+        .get_mut("PreToolUse")
+        .unwrap()
+        .as_array_mut()
+        .unwrap();
+
+    let mut bash_entry_idx = None;
+    for (idx, val) in pre_tool_array.iter().enumerate() {
+        if let Some(val_obj) = val.as_object() {
+            if val_obj.get("matcher").and_then(|m| m.as_str()) == Some("Bash") {
+                bash_entry_idx = Some(idx);
+                break;
+            }
+        }
+    }
+
+    let hook_entry = serde_json::json!({
+        "type": "command",
+        "command": format!("bash {}", hook_path),
+        "timeout": 5000
+    });
+
+    if let Some(idx) = bash_entry_idx {
+        let bash_obj = pre_tool_array[idx].as_object_mut().unwrap();
+        if !bash_obj.contains_key("hooks") || !bash_obj["hooks"].is_array() {
+            bash_obj.insert("hooks".to_string(), serde_json::Value::Array(Vec::new()));
+        }
+        let inner_hooks = bash_obj.get_mut("hooks").unwrap().as_array_mut().unwrap();
+
+        inner_hooks.retain(|h| {
+            h.get("command")
+                .and_then(|c| c.as_str())
+                .map(|s| !s.contains("rtk-rewrite.sh"))
+                .unwrap_or(true)
+        });
+
+        inner_hooks.push(hook_entry);
+    } else {
+        let new_bash_entry = serde_json::json!({
+            "matcher": "Bash",
+            "hooks": [hook_entry]
+        });
+        pre_tool_array.push(new_bash_entry);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -198,6 +311,38 @@ mod tests {
         assert_eq!(rtk_rules, RTK_TOOLKIT_CONTENT);
 
         fs::remove_dir_all(temp_dir).unwrap();
+    }
+
+    #[test]
+    fn test_inject_hook_value() {
+        let mut json = serde_json::json!({
+            "existing_setting": true,
+            "hooks": {
+                "PreToolUse": [
+                    {
+                        "matcher": "Bash",
+                        "hooks": [
+                            {
+                                "type": "command",
+                                "command": "echo old",
+                                "timeout": 1000
+                            }
+                        ]
+                    }
+                ]
+            }
+        });
+
+        inject_hook_value(&mut json, "/path/to/rtk-rewrite.sh");
+
+        let pre_tool = json["hooks"]["PreToolUse"].as_array().unwrap();
+        assert_eq!(pre_tool.len(), 1);
+        let bash_entry = &pre_tool[0];
+        assert_eq!(bash_entry["matcher"], "Bash");
+        let inner_hooks = bash_entry["hooks"].as_array().unwrap();
+        assert_eq!(inner_hooks.len(), 2);
+        assert_eq!(inner_hooks[1]["command"], "bash /path/to/rtk-rewrite.sh");
+        assert_eq!(json["existing_setting"], true);
     }
 
     fn rand_suffix() -> u32 {

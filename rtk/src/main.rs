@@ -4,15 +4,21 @@ use std::path::Path;
 
 mod cargo_build;
 mod cargo_test;
+mod dashboard;
 mod distiller;
+mod dlp;
+mod docker_filter;
 mod git_diff;
 mod git_log;
 mod git_status;
+mod go_test;
+mod gradle;
 mod ls_filter;
 mod pack;
 mod pytest_filter;
 mod rewrite;
 mod setup;
+mod skeleton;
 mod sync_rules;
 mod tracking;
 
@@ -60,6 +66,21 @@ enum Commands {
         #[arg(trailing_var_arg = true)]
         args: Vec<String>,
     },
+    /// Run a gradle command with filtered output
+    Gradle {
+        #[arg(trailing_var_arg = true)]
+        args: Vec<String>,
+    },
+    /// Run go test with filtered output
+    GoTest {
+        #[arg(trailing_var_arg = true)]
+        args: Vec<String>,
+    },
+    /// Run a docker command with filtered output
+    Docker {
+        #[arg(trailing_var_arg = true)]
+        args: Vec<String>,
+    },
     /// Pack a directory's text files into an XML context block
     Pack {
         /// Path to the directory to pack
@@ -68,6 +89,9 @@ enum Commands {
         /// Strip comments and collapse consecutive empty lines
         #[arg(short, long)]
         strip: bool,
+        /// Generate skeletal structure of the code, exporting only signatures
+        #[arg(short = 'k', long)]
+        skeleton: bool,
         /// Maximum token budget (whitespace count). Errors if exceeded.
         #[arg(short, long)]
         limit: Option<usize>,
@@ -79,6 +103,8 @@ enum Commands {
     },
     /// Print token savings statistics
     Stats,
+    /// Launch the local savings dashboard in the default browser
+    Dashboard,
     /// Synchronize rule files from root workspace to subprojects
     SyncRules,
     /// Retrieve a cached raw log by its ID
@@ -130,21 +156,32 @@ fn main() {
         }
         Commands::Pytest { args } => run_filtered("pytest", &args, pytest_filter::filter),
         Commands::Ls { args } => run_filtered("ls", &args, ls_filter::filter),
-        Commands::Pack { path, strip, limit } => pack::pack_directory(Path::new(&path), strip)
-            .and_then(|packed| {
-                if let Some(lim) = limit {
-                    let tokens = packed.split_whitespace().count();
-                    if tokens > lim {
-                        return Err(anyhow::anyhow!(
-                            "Pack exceeded token limit! (Limit: {}, Total: {})",
-                            lim,
-                            tokens
-                        ));
-                    }
+        Commands::Gradle { args } => run_filtered(get_gradle_bin(), &args, gradle::filter),
+        Commands::GoTest { args } => {
+            let mut full_args = vec!["test".to_string()];
+            full_args.extend(args);
+            run_filtered("go", &full_args, go_test::filter)
+        }
+        Commands::Docker { args } => run_filtered("docker", &args, docker_filter::filter),
+        Commands::Pack {
+            path,
+            strip,
+            skeleton,
+            limit,
+        } => pack::pack_directory(Path::new(&path), strip, skeleton).and_then(|packed| {
+            if let Some(lim) = limit {
+                let tokens = packed.split_whitespace().count();
+                if tokens > lim {
+                    return Err(anyhow::anyhow!(
+                        "Pack exceeded token limit! (Limit: {}, Total: {})",
+                        lim,
+                        tokens
+                    ));
                 }
-                print!("{packed}");
-                Ok(())
-            }),
+            }
+            print!("{packed}");
+            Ok(())
+        }),
         Commands::Memory { subcmd } => match subcmd {
             MemoryCommands::Set { key, value } => tracking::memory_set(&key, &value).map(|_| {
                 println!("Memory saved: {} = {}", key, value);
@@ -167,6 +204,7 @@ fn main() {
             }),
         },
         Commands::Stats => tracking::print_stats(),
+        Commands::Dashboard => dashboard::run_dashboard(),
         Commands::SyncRules => sync_rules::run(Path::new(".")),
         Commands::ShowLog { id } => tracking::get_raw_log(id).map(|raw_log| {
             print!("{raw_log}");
@@ -180,6 +218,18 @@ fn main() {
     }
 }
 
+fn get_gradle_bin() -> &'static str {
+    if Path::new("./gradlew").exists() || Path::new("gradlew.bat").exists() {
+        if cfg!(target_os = "windows") {
+            "gradlew.bat"
+        } else {
+            "./gradlew"
+        }
+    } else {
+        "gradle"
+    }
+}
+
 fn run_filtered(bin: &str, args: &[String], filter: fn(&str) -> String) -> Result<()> {
     let output = std::process::Command::new(bin)
         .args(args)
@@ -189,12 +239,23 @@ fn run_filtered(bin: &str, args: &[String], filter: fn(&str) -> String) -> Resul
     let stdout = String::from_utf8_lossy(&output.stdout);
     let filtered = filter(&stdout);
 
-    let cmd_label = format!("{} {}", bin, args.first().map(|s| s.as_str()).unwrap_or(""));
-    let mut final_output = filtered.clone();
+    // DLP sensitive data scrubbing
+    let redacted_filtered = dlp::redact(&filtered);
+    let redacted_stdout = dlp::redact(&stdout);
 
-    match tracking::record(cmd_label.trim(), &stdout, &filtered, &stdout) {
+    let cmd_label = format!("{} {}", bin, args.first().map(|s| s.as_str()).unwrap_or(""));
+    let mut final_output = redacted_filtered.clone();
+
+    match tracking::record(
+        cmd_label.trim(),
+        &redacted_stdout,
+        &redacted_filtered,
+        &redacted_stdout,
+    ) {
         Ok(log_id) => {
-            if filtered.len() < stdout.len() && !filtered.trim().is_empty() {
+            if redacted_filtered.len() < redacted_stdout.len()
+                && !redacted_filtered.trim().is_empty()
+            {
                 final_output.push_str(&format!(
                     "\n[Full output cached. Access with: rtk show-log {}]\n",
                     log_id
@@ -210,7 +271,7 @@ fn run_filtered(bin: &str, args: &[String], filter: fn(&str) -> String) -> Resul
 
     if !output.stderr.is_empty() {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        eprint!("{stderr}");
+        eprint!("{}", dlp::redact(&stderr));
     }
 
     if !output.status.success() {
@@ -231,12 +292,23 @@ fn run_filtered_stderr(bin: &str, args: &[String], filter: fn(&str) -> String) -
     let stderr = String::from_utf8_lossy(&output.stderr);
     let filtered = filter(&stderr);
 
-    let cmd_label = format!("{} {}", bin, args.first().map(|s| s.as_str()).unwrap_or(""));
-    let mut final_filtered = filtered.clone();
+    // DLP sensitive data scrubbing
+    let redacted_filtered = dlp::redact(&filtered);
+    let redacted_stderr = dlp::redact(&stderr);
 
-    match tracking::record(cmd_label.trim(), &stderr, &filtered, &stderr) {
+    let cmd_label = format!("{} {}", bin, args.first().map(|s| s.as_str()).unwrap_or(""));
+    let mut final_filtered = redacted_filtered.clone();
+
+    match tracking::record(
+        cmd_label.trim(),
+        &redacted_stderr,
+        &redacted_filtered,
+        &redacted_stderr,
+    ) {
         Ok(log_id) => {
-            if filtered.len() < stderr.len() && !filtered.trim().is_empty() {
+            if redacted_filtered.len() < redacted_stderr.len()
+                && !redacted_filtered.trim().is_empty()
+            {
                 final_filtered.push_str(&format!(
                     "\n[Full output cached. Access with: rtk show-log {}]\n",
                     log_id
@@ -248,9 +320,9 @@ fn run_filtered_stderr(bin: &str, args: &[String], filter: fn(&str) -> String) -
         }
     }
 
-    // stdout (usually empty for build/check) passes through unchanged
+    // stdout (usually empty for build/check) passes through unchanged (scrubbed for safety)
     if !output.stdout.is_empty() {
-        print!("{}", String::from_utf8_lossy(&output.stdout));
+        print!("{}", dlp::redact(&String::from_utf8_lossy(&output.stdout)));
     }
     // filtered diagnostics go back to stderr
     eprint!("{final_filtered}");
@@ -272,12 +344,17 @@ fn run_distilled(bin: &str, args: &[String]) -> Result<()> {
     let stderr = String::from_utf8_lossy(&output.stderr);
 
     let combined_original = format!("STDOUT:\n{stdout}\nSTDERR:\n{stderr}");
+    let redacted_combined = dlp::redact(&combined_original);
 
     let distilled_stdout = distiller::distill(&stdout, None);
     let distilled_stderr = distiller::distill(&stderr, None);
 
-    let mut final_stdout = distilled_stdout.clone();
-    let mut final_stderr = distilled_stderr.clone();
+    // DLP sensitive data scrubbing
+    let redacted_dist_stdout = dlp::redact(&distilled_stdout);
+    let redacted_dist_stderr = dlp::redact(&distilled_stderr);
+
+    let mut final_stdout = redacted_dist_stdout.clone();
+    let mut final_stderr = redacted_dist_stderr.clone();
 
     let cmd_label = format!("{} {}", bin, args.first().map(|s| s.as_str()).unwrap_or(""));
 
@@ -287,9 +364,9 @@ fn run_distilled(bin: &str, args: &[String]) -> Result<()> {
 
     match tracking::record(
         cmd_label.trim(),
-        &combined_original,
-        &format!("{}\n{}", distilled_stdout, distilled_stderr),
-        &combined_original,
+        &redacted_combined,
+        &format!("{}\n{}", redacted_dist_stdout, redacted_dist_stderr),
+        &redacted_combined,
     ) {
         Ok(log_id) => {
             if total_filt_len < total_orig_len {
@@ -311,10 +388,10 @@ fn run_distilled(bin: &str, args: &[String]) -> Result<()> {
         }
     }
 
-    if !distilled_stdout.is_empty() {
+    if !redacted_dist_stdout.is_empty() {
         print!("{final_stdout}");
     }
-    if !distilled_stderr.is_empty() {
+    if !redacted_dist_stderr.is_empty() {
         eprint!("{final_stderr}");
     }
 

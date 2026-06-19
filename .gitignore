@@ -18,3 +18,5 @@ Thumbs.db
 *.db
 *.sqlite
 hook-audit.log
+dashboard.html
+

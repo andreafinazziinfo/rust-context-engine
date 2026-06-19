@@ -138,6 +138,26 @@ fn auto_rewrite(cmd: &str) -> Option<String> {
                 Regex::new(r"^ls(\s|$)").unwrap(),
                 Box::new(|c| format!("rtk ls{}", &c[2..]))
             ),
+            (
+                Regex::new(r"^(?:\./)?gradlew?(\s|$)").unwrap(),
+                Box::new(|c| {
+                    if c.starts_with("./gradlew") {
+                        c.replacen("./gradlew", "rtk gradle", 1)
+                    } else if c.starts_with("gradlew") {
+                        c.replacen("gradlew", "rtk gradle", 1)
+                    } else {
+                        c.replacen("gradle", "rtk gradle", 1)
+                    }
+                })
+            ),
+            (
+                Regex::new(r"^go\s+test(\s|$)").unwrap(),
+                Box::new(|c| c.replacen("go test", "rtk go_test", 1))
+            ),
+            (
+                Regex::new(r"^docker\s+(build|run)(\s|$)").unwrap(),
+                Box::new(|c| c.replacen("docker", "rtk docker", 1))
+            ),
         ];
     }
     for (re, rewriter) in AUTO.iter() {
@@ -166,6 +186,35 @@ mod tests {
     #[test]
     fn test_cargo_test_rewrite() {
         assert_eq!(auto_rewrite("cargo test"), Some("rtk cargo test".into()));
+    }
+
+    #[test]
+    fn test_gradle_rewrite() {
+        assert_eq!(
+            auto_rewrite("./gradlew build"),
+            Some("rtk gradle build".into())
+        );
+        assert_eq!(auto_rewrite("gradle test"), Some("rtk gradle test".into()));
+    }
+
+    #[test]
+    fn test_go_test_rewrite() {
+        assert_eq!(
+            auto_rewrite("go test ./..."),
+            Some("rtk go_test ./...".into())
+        );
+    }
+
+    #[test]
+    fn test_docker_rewrite() {
+        assert_eq!(
+            auto_rewrite("docker build -t app ."),
+            Some("rtk docker build -t app .".into())
+        );
+        assert_eq!(
+            auto_rewrite("docker run -it app"),
+            Some("rtk docker run -it app".into())
+        );
     }
 
     #[test]

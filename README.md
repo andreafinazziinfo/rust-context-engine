@@ -98,11 +98,13 @@ graph TD
 
 ## 🌟 Core Features
 
-*   **Command Output Filtering**: Zero latency (sub-10ms), sub-5MB memory footprint filters written in Rust for standard commands (`ls`, `pytest`, `cargo`, `git`, `npm`).
+*   **Command Output Filtering**: Zero latency (sub-10ms), sub-5MB memory footprint filters written in Rust for standard developer tools (`ls`, `pytest`, `cargo`, `git`, `npm`, `gradle`, `go test`, `docker`).
+*   **Data Loss Prevention (DLP) Guard**: An integrated Shannon-entropy and regex-based scanner that automatically redacts API keys, credentials, JWTs, and private keys from packed context and terminal outputs before they reach the LLM.
+*   **Smart Code Skeletonizer**: An indentation- and brace-based code skeletonizer (`rtk pack -k`) that strips function bodies and preserves structure for huge codebases to fit within small budgets.
 *   **Context Virtualization**: Large logs and tracebacks are hidden from the AI context. The full raw log is saved in SQLite, and a small hash token is returned. The AI can retrieve the full log using `rtk show-log <id>`.
-*   **AI-Friendly Directory Packing**: Compresses a directory structure into an XML file. Supports `.gitignore` / `.rtkignore` files and minifies code by stripping comments and blank lines.
+*   **AI-Friendly Directory Packing**: Compresses a directory structure into an XML file. Supports `.gitignore` / `.rtkignore` files, minifying code by stripping comments/blank lines, and compiling skeletons.
 *   **Rule Synchronization**: Recursively mirrors your system instruction files (`.cursor/rules`, `.agents/rules`) to sub-project folders so rules apply even when folders are opened individually.
-*   **Token Savings Dashboard**: Command stats tracks command execution history and displays exact tokens and API costs saved.
+*   **Token Savings Dashboard**: Launch `rtk dashboard` to query the SQLite database and open a sleek, local HTML interactive report displaying tokens and estimated API costs saved.
 
 ---
 
@@ -121,15 +123,19 @@ These commands run automatically when intercepted by shell hooks:
 | `rtk pytest` | Removes platform preamble, collapses deprecation warnings. | **70% - 90%** |
 | `rtk ls` | Strips group/owner, collapses directories with >20 files. | **50% - 70%** |
 | `rtk npm install`| Distills NPM outputs to first/last 15 lines + error lines. | **75% - 95%** |
+| `rtk gradle` | Filters task progress/executions; preserves compilation diagnostics. | **65% - 90%** |
+| `rtk go test` | Hides passing test items; retains failures, panic traces, and compilation errors. | **70% - 95%** |
+| `rtk docker` | Strips dynamic pull/build layer progress bars; retains build steps and warnings. | **80% - 95%** |
 
 ### 2. Toolkit Utilities
 
-#### `rtk pack [path] [--strip] [--limit <max_tokens>]`
+#### `rtk pack [path] [--strip] [--skeleton] [--limit <max_tokens>]`
 Searches a folder and creates an XML file representation of its files. 
 *   Use `-s` or `--strip` to remove comments and collapse blank lines.
+*   Use `-k` or `--skeleton` to generate a skeleton structure of files, stripping function bodies for supported languages (Rust, Python, JS/TS).
 *   Use `-l` or `--limit` to specify a maximum token budget (whitespace count). The command will error out if the limit is exceeded:
 ```bash
-rtk pack . --strip --limit 50000
+rtk pack . --strip --skeleton --limit 50000
 ```
 
 #### `rtk memory <subcommand>`
@@ -164,6 +170,12 @@ rtk sync-rules
 Displays command statistics, total tokens saved, and estimated API savings:
 ```bash
 rtk stats
+```
+
+#### `rtk dashboard`
+Generates a sleek, local HTML telemetry dashboard and automatically opens it in the system's default browser to visualize token and cost savings with charts and tables:
+```bash
+rtk dashboard
 ```
 
 ---

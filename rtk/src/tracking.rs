@@ -109,6 +109,45 @@ pub fn print_stats() -> Result<()> {
     Ok(())
 }
 
+/// Fetch aggregate savings stats for the dashboard.
+pub fn get_savings_data() -> Result<(i64, i64, i64, i64, f64)> {
+    let conn = open_db()?;
+    let mut stmt =
+        conn.prepare("SELECT COUNT(*), SUM(original_tokens), SUM(filtered_tokens) FROM tracking")?;
+
+    let (count, original, filtered): (i64, Option<i64>, Option<i64>) =
+        stmt.query_row([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))?;
+
+    let original = original.unwrap_or(0);
+    let filtered = filtered.unwrap_or(0);
+    let saved = original - filtered;
+    // Pricing: $3.00 per million tokens saved
+    let cost_saved = (saved as f64 / 1_000_000.0) * 3.00;
+
+    Ok((count, original, filtered, saved, cost_saved))
+}
+
+/// Fetch command breakdown statistics (name, invocations, saved tokens).
+pub fn get_command_breakdown() -> Result<Vec<(String, i64, i64)>> {
+    let conn = open_db()?;
+    let mut stmt = conn.prepare(
+        "SELECT command, COUNT(*), SUM(original_tokens - filtered_tokens) FROM tracking GROUP BY command ORDER BY COUNT(*) DESC"
+    )?;
+
+    let rows = stmt.query_map([], |r| {
+        let cmd: String = r.get(0)?;
+        let count: i64 = r.get(1)?;
+        let saved: Option<i64> = r.get(2)?;
+        Ok((cmd, count, saved.unwrap_or(0)))
+    })?;
+
+    let mut results = Vec::new();
+    for row in rows {
+        results.push(row?);
+    }
+    Ok(results)
+}
+
 /// Save a project memory key-value pair.
 pub fn memory_set(key: &str, val: &str) -> Result<()> {
     let conn = open_db()?;
