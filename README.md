@@ -30,26 +30,30 @@ sequenceDiagram
     actor LLM as AI Agent / Developer
     participant Hook as Shell Hook (PreToolUse)
     participant RTK as RTK CLI
+    participant Config as User Config (config.json)
     participant DB as SQLite DB (rtk.db)
     participant Cmd as Target Command
 
     LLM->>Hook: Execute Shell Command (e.g. ls -l)
     Hook->>RTK: rtk rewrite "ls -l"
-    alt Rewrite Rule Matched (Auto-allow)
+    RTK->>Config: Load global/local configuration
+    Config-->>RTK: Configuration loaded (denied commands & DLP)
+    alt Deny Rule Matched (Dangerous command or User Guardrail)
+        RTK-->>Hook: Exit 2 (Aborted by Security / Personal Guardrails)
+        Hook-->>LLM: Abort command (Security Denied)
+    else Rewrite Rule Matched (Ask user)
+        RTK-->>Hook: Exit 3 (Rewritten: rtk git push)
+        Hook-->>LLM: Prompt User for Confirmation
+    else Rewrite Rule Matched (Auto-allow)
         RTK-->>Hook: Exit 0 (Rewritten: rtk ls -l)
         Hook->>RTK: Run: rtk ls -l
         RTK->>Cmd: Execute "ls -l"
         Cmd-->>RTK: Raw Output (100 lines)
         RTK->>RTK: Apply ls_filter (Collapses entries, drops owners)
+        RTK->>RTK: Apply DLP Redact (Scrub default keys + custom patterns)
         RTK->>DB: Store Raw Output (Associate with ID)
         DB-->>RTK: Log ID (e.g. 42)
         RTK-->>LLM: Return Filtered Output + "[Full output cached. Access with: rtk show-log 42]"
-    else Rewrite Rule Matched (Ask user)
-        RTK-->>Hook: Exit 3 (Rewritten: rtk git push)
-        Hook-->>LLM: Prompt User for Confirmation
-    else Deny Rule Matched
-        RTK-->>Hook: Exit 2 (e.g. rm -rf /)
-        Hook-->>LLM: Abort command (Security Denied)
     else No Match
         RTK-->>Hook: Exit 1 (No rewrite)
         Hook->>Cmd: Run original command directly
@@ -70,9 +74,10 @@ The flowchart below shows how `rtk pack` recursively scans a workspace, filters 
 
 ```mermaid
 graph TD
-    Start([Run: rtk pack path --strip]) --> Canonical[Canonicalize Root Path]
+    Start([Run: rtk pack path --strip --skeleton]) --> Canonical[Canonicalize Root Path]
     Canonical --> LoadIgnores[Load Ignore Patterns<br>Defaults + .gitignore + .rtkignore]
-    LoadIgnores --> StartRecurse[Recursively Traverse Directory]
+    LoadIgnores --> LoadConfig[Load config.json / .rtk.json<br>For custom DLP patterns]
+    LoadConfig --> StartRecurse[Recursively Traverse Directory]
     StartRecurse --> NextEntry{Get Next Entry}
     
     NextEntry -- No More Entries --> End([Output XML Context Block])
@@ -88,9 +93,13 @@ graph TD
     IsBinary -- No --> ReadFile[Read File Content]
     
     ReadFile --> CheckStrip{--strip flag set?}
-    CheckStrip -- Yes --> Minify[Minify Content<br>1. Strip full-line comments<br>2. Collapse consecutive empty lines] --> WrapXML
-    CheckStrip -- No --> WrapXML["Wrap in XML Tag:<br>&lt;file path='...'&gt;&lt;![CDATA[...]]&gt;&lt;/file&gt;"]
+    CheckStrip -- Yes --> Minify[Minify Content<br>1. Strip full-line comments<br>2. Collapse empty lines] --> CheckSkeleton
+    CheckStrip -- No --> CheckSkeleton{--skeleton flag set?}
     
+    CheckSkeleton -- Yes --> Skeletonize[Skeletonize Code<br>Collapse function/method bodies] --> DLPRedact
+    CheckSkeleton -- No --> DLPRedact[Apply DLP Redact<br>Scrub default keys + custom patterns]
+    
+    DLPRedact --> WrapXML["Wrap in XML Tag:<br>&lt;file path='...'&gt;&lt;![CDATA[...]]&gt;&lt;/file&gt;"]
     WrapXML --> AppendOutput[Append to XML Buffer] --> NextEntry
 ```
 
