@@ -96,10 +96,10 @@ pub fn check_budget(limit_usd: f64) -> anyhow::Result<BudgetStatus> {
 
 pub fn suggest_model(task_type: &str) -> &'static str {
     match task_type.to_lowercase().as_str() {
-        "simple" | "single-file-edit" | "documentation" => "gpt-4o-mini",
-        "complex" | "complex-refactoring" | "planning" => "claude-3.5-sonnet",
-        "audit" | "security" | "review" => "gemini-1.5-pro",
-        _ => "claude-3.5-sonnet",
+        "simple" | "single-file-edit" | "documentation" => "gemini-3.5-flash",
+        "complex" | "complex-refactoring" | "planning" => "claude-4.6-sonnet",
+        "audit" | "security" | "review" => "gemini-3.1-pro-preview",
+        _ => "claude-4.6-sonnet",
     }
 }
 
@@ -111,25 +111,25 @@ mod tests {
     fn test_pricing_registry_loads() {
         let registry = get_registry();
         assert!(!registry.models.is_empty());
-        assert_eq!(registry.pricing_revision, "2026-06-20");
+        assert_eq!(registry.pricing_revision, "2026-06-21");
     }
 
     #[test]
     fn test_get_model_price() {
-        let price = get_model_price("claude-3.5-sonnet").unwrap();
-        assert_eq!(price.display_name, "Claude 3.5 Sonnet");
+        let price = get_model_price("claude-4.6-sonnet").unwrap();
+        assert_eq!(price.display_name, "Claude Sonnet 4.6");
         assert_eq!(price.input_price_per_mtok, 3.0);
         assert_eq!(price.output_price_per_mtok, 15.0);
     }
 
     #[test]
     fn test_calculate_cost() {
-        // 100,000 input tokens for claude-3.5-sonnet -> $3.00 * 0.1 = $0.30
-        let cost = calculate_cost(100_000, "claude-3.5-sonnet", false);
+        // 100,000 input tokens for claude-4.6-sonnet -> $3.00 * 0.1 = $0.30
+        let cost = calculate_cost(100_000, "claude-4.6-sonnet", false);
         assert!((cost - 0.30).abs() < 1e-6);
 
-        // 10,000 output tokens for claude-3.5-sonnet -> $15.00 * 0.01 = $0.15
-        let cost_out = calculate_cost(10_000, "claude-3.5-sonnet", true);
+        // 10,000 output tokens for claude-4.6-sonnet -> $15.00 * 0.01 = $0.15
+        let cost_out = calculate_cost(10_000, "claude-4.6-sonnet", true);
         assert!((cost_out - 0.15).abs() < 1e-6);
     }
 }

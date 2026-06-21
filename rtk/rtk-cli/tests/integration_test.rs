@@ -347,7 +347,7 @@ fn test_rtk_budget_and_mcp_cli_lifecycle() {
     assert!(model_out.status.success());
     let model_str = String::from_utf8_lossy(&model_out.stdout);
     assert!(model_str.contains(
-        "Routing Suggestion: task 'complex-refactoring' -> use model 'claude-3.5-sonnet'"
+        "Routing Suggestion: task 'complex-refactoring' -> use model 'claude-4.6-sonnet'"
     ));
 
     // 3. Setup temporary file to index & test MCP call

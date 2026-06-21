@@ -130,14 +130,14 @@ RTK injects system prompts that force the AI to use ultra-compressed communicati
 
 ### 💰 Cost & Time Savings (Monthly Projection: 50 commands/day)
 
-| Model | Input $/MTok | Output $/MTok | Monthly Savings |
-| :--- | ---: | ---: | ---: |
-| **Claude 3.5 Sonnet** | $3.00 | $15.00 | **$206/mo** |
-| **Claude 3 Opus** | $15.00 | $75.00 | **$1,028/mo** |
-| **GPT-4o** | $2.50 | $10.00 | **$171/mo** |
-| **GPT-4o mini** | $0.15 | $0.60 | **$10/mo** |
-| **Gemini 1.5 Pro** | $1.25 | $3.75 | **$86/mo** |
-| **Gemini 1.5 Flash** | $0.075 | $0.30 | **$5/mo** |
+| Provider  | Tier | Modello                | Input / 1M | Output / 1M | Note                                  |
+| --------- | ---- | ---------------------- | ---------- | ----------- | ------------------------------------- |
+| Anthropic | Top  | Claude Opus 4.8        | $5.00      | $25.00      | Model pricing ufficiale Claude.       |
+| Anthropic | Mid  | Claude Sonnet 4.6      | $3.00      | $15.00      | Model pricing ufficiale Claude.       |
+| OpenAI    | Top  | GPT-5.5                | $5.00      | $30.00      | Pricing ufficiale OpenAI.             |
+| OpenAI    | Mid  | GPT-5.4                | $2.50      | $15.00      | Pricing ufficiale OpenAI.             |
+| Google    | Top  | Gemini 3.1 Pro Preview | $2.00      | $12.00      | Fino a 200k token, poi cambia fascia. |
+| Google    | Mid  | Gemini 3.5 Flash       | $1.50      | $9.00       | Buon tier intermedio.                 |
 
 
 ---

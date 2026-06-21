@@ -447,31 +447,31 @@ pub fn run_audit(output_path: &str) -> Result<()> {
 
     let hours_saved = (count as f64 * 22.8) / 3600.0;
 
-    let opus_price = crate::pricing::get_model_price("claude-3-opus")
+    let opus_price = crate::pricing::get_model_price("claude-4.8-opus")
         .map(|m| m.input_price_per_mtok)
-        .unwrap_or(15.0);
-    let sonnet_price = crate::pricing::get_model_price("claude-3.5-sonnet")
+        .unwrap_or(5.0);
+    let sonnet_price = crate::pricing::get_model_price("claude-4.6-sonnet")
         .map(|m| m.input_price_per_mtok)
         .unwrap_or(3.0);
-    let gpt4o_price = crate::pricing::get_model_price("gpt-4o")
+    let gpt55_price = crate::pricing::get_model_price("gpt-5.5")
+        .map(|m| m.input_price_per_mtok)
+        .unwrap_or(5.0);
+    let gpt54_price = crate::pricing::get_model_price("gpt-5.4")
         .map(|m| m.input_price_per_mtok)
         .unwrap_or(2.50);
-    let gemini_pro_price = crate::pricing::get_model_price("gemini-2.5-pro")
+    let gemini_pro_price = crate::pricing::get_model_price("gemini-3.1-pro-preview")
         .map(|m| m.input_price_per_mtok)
-        .unwrap_or(1.25);
-    let gpt4o_mini_price = crate::pricing::get_model_price("gpt-4o-mini")
+        .unwrap_or(2.00);
+    let gemini_flash_price = crate::pricing::get_model_price("gemini-3.5-flash")
         .map(|m| m.input_price_per_mtok)
-        .unwrap_or(0.15);
-    let gemini_flash_price = crate::pricing::get_model_price("gemini-2.5-flash")
-        .map(|m| m.input_price_per_mtok)
-        .unwrap_or(0.15);
+        .unwrap_or(1.50);
 
-    let opus_savings = crate::pricing::calculate_savings(saved, "claude-3-opus");
-    let sonnet_savings = crate::pricing::calculate_savings(saved, "claude-3.5-sonnet");
-    let gpt4o_savings = crate::pricing::calculate_savings(saved, "gpt-4o");
-    let gemini_pro_savings = crate::pricing::calculate_savings(saved, "gemini-2.5-pro");
-    let gpt4o_mini_savings = crate::pricing::calculate_savings(saved, "gpt-4o-mini");
-    let gemini_flash_savings = crate::pricing::calculate_savings(saved, "gemini-2.5-flash");
+    let opus_savings = crate::pricing::calculate_savings(saved, "claude-4.8-opus");
+    let sonnet_savings = crate::pricing::calculate_savings(saved, "claude-4.6-sonnet");
+    let gpt55_savings = crate::pricing::calculate_savings(saved, "gpt-5.5");
+    let gpt54_savings = crate::pricing::calculate_savings(saved, "gpt-5.4");
+    let gemini_pro_savings = crate::pricing::calculate_savings(saved, "gemini-3.1-pro-preview");
+    let gemini_flash_savings = crate::pricing::calculate_savings(saved, "gemini-3.5-flash");
 
     // Build command breakdown rows
     let mut rows_md = String::new();
@@ -506,12 +506,12 @@ pub fn run_audit(output_path: &str) -> Result<()> {
          This table projects what would have been saved under different LLM pricing models for the same volume of saved tokens ({} tokens):\n\n\
          | Model | Input Price / MTok | Estimated Savings |\n\
          | :--- | ---: | ---: |\n\
-         | **Claude 3 Opus** | ${:.2} | ${:.4} |\n\
-         | **Claude 3.5 Sonnet** | ${:.2} | ${:.4} |\n\
-         | **GPT-4o** | ${:.2} | ${:.4} |\n\
-         | **Gemini 2.5 Pro** | ${:.2} | ${:.4} |\n\
-         | **GPT-4o mini** | ${:.2} | ${:.4} |\n\
-         | **Gemini 2.5 Flash** | ${:.2} | ${:.4} |\n\n\
+         | **Claude Opus 4.8** | ${:.2} | ${:.4} |\n\
+         | **Claude Sonnet 4.6** | ${:.2} | ${:.4} |\n\
+         | **GPT-5.5** | ${:.2} | ${:.4} |\n\
+         | **GPT-5.4** | ${:.2} | ${:.4} |\n\
+         | **Gemini 3.1 Pro Preview** | ${:.2} | ${:.4} |\n\
+         | **Gemini 3.5 Flash** | ${:.2} | ${:.4} |\n\n\
          > [!NOTE]\n\
          > Savings calculations are based on input token reductions. Wait-time savings are calculated at a conservative rate of 22.8 seconds of developer waiting time saved per command.\n\n\
          ## 🗃️ Command Breakdown\n\n\
@@ -521,9 +521,9 @@ pub fn run_audit(output_path: &str) -> Result<()> {
         now, count, original, filtered, saved, savings_pct, cost_saved, hours_saved, saved,
         opus_price, opus_savings,
         sonnet_price, sonnet_savings,
-        gpt4o_price, gpt4o_savings,
+        gpt55_price, gpt55_savings,
+        gpt54_price, gpt54_savings,
         gemini_pro_price, gemini_pro_savings,
-        gpt4o_mini_price, gpt4o_mini_savings,
         gemini_flash_price, gemini_flash_savings,
         rows_md
     );
@@ -1028,11 +1028,11 @@ mod tests {
 
         assert_eq!(
             crate::pricing::suggest_model("single-file-edit"),
-            "gpt-4o-mini"
+            "gemini-3.5-flash"
         );
         assert_eq!(
             crate::pricing::suggest_model("complex-refactoring"),
-            "claude-3.5-sonnet"
+            "claude-4.6-sonnet"
         );
 
         memory_overwrite("test_key", "val1").unwrap();
