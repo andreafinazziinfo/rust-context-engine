@@ -1,7 +1,7 @@
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **rust-context-engine** (1402 symbols, 2495 relationships, 111 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **ai-token-saver** (1481 symbols, 2632 relationships, 120 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > Index stale? Run `node .gitnexus/run.cjs analyze` from the project root — it auto-selects an available runner. No `.gitnexus/run.cjs` yet? `npx gitnexus analyze` (npm 11 crash → `npm i -g gitnexus`; #1939).
 
@@ -24,10 +24,10 @@ This project is indexed by GitNexus as **rust-context-engine** (1402 symbols, 24
 
 | Resource | Use for |
 |----------|---------|
-| `gitnexus://repo/rust-context-engine/context` | Codebase overview, check index freshness |
-| `gitnexus://repo/rust-context-engine/clusters` | All functional areas |
-| `gitnexus://repo/rust-context-engine/processes` | All execution flows |
-| `gitnexus://repo/rust-context-engine/process/{name}` | Step-by-step execution trace |
+| `gitnexus://repo/ai-token-saver/context` | Codebase overview, check index freshness |
+| `gitnexus://repo/ai-token-saver/clusters` | All functional areas |
+| `gitnexus://repo/ai-token-saver/processes` | All execution flows |
+| `gitnexus://repo/ai-token-saver/process/{name}` | Step-by-step execution trace |
 
 ## CLI
 
