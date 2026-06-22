@@ -3,6 +3,8 @@ name = "rtk-mcp"
 version = "2.3.0"
 edition = "2021"
 description = "RTK — Model Context Protocol (MCP) server for local context tools"
+license = "Apache-2.0"
+repository = "https://github.com/andreafinazziinfo/rust-context-engine"
 
 [dependencies]
 anyhow = "1"

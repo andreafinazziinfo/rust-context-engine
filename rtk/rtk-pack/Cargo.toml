@@ -3,6 +3,8 @@ name = "rtk-pack"
 version = "2.3.0"
 edition = "2021"
 description = "RTK — code layout packing and AST skeleton parser modules"
+license = "Apache-2.0"
+repository = "https://github.com/andreafinazziinfo/rust-context-engine"
 
 [dependencies]
 anyhow = "1"

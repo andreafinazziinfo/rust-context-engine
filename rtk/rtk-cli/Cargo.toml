@@ -3,6 +3,8 @@ name = "rtk-cli"
 version = "2.3.0"
 edition = "2021"
 description = "RTK — main entrypoint binary and command router CLI"
+license = "Apache-2.0"
+repository = "https://github.com/andreafinazziinfo/rust-context-engine"
 
 [[bin]]
 name = "rtk"

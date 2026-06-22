@@ -3,6 +3,8 @@ name = "rtk-index"
 version = "2.3.0"
 edition = "2021"
 description = "RTK — code graph indexing, symbols navigation, and blast radius impact analyzer"
+license = "Apache-2.0"
+repository = "https://github.com/andreafinazziinfo/rust-context-engine"
 
 [dependencies]
 anyhow = "1"
