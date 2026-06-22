@@ -234,6 +234,11 @@ pub fn get_raw_log(id: i64) -> Result<String> {
 
 /// Query tracking DB and print savings report.
 pub fn print_stats() -> Result<()> {
+    print_stats_with_chart(false)
+}
+
+/// Query tracking DB and print savings report, optionally including a trend chart.
+pub fn print_stats_with_chart(chart: bool) -> Result<()> {
     let conn = open_db()?;
     let mut stmt =
         conn.prepare("SELECT COUNT(*), SUM(original_tokens), SUM(filtered_tokens) FROM tracking")?;
@@ -274,6 +279,58 @@ pub fn print_stats() -> Result<()> {
     println!("Tokens Saved:             {} ({:.1}%)", saved, savings_pct);
     println!("Estimated API Cost Saved: ${:.4} USD", cost_saved);
     println!("========================================");
+
+    if chart {
+        let mut stmt_chart = conn.prepare(
+            "SELECT date(timestamp) as day, filtered_tokens, COALESCE(model, '') FROM tracking ORDER BY timestamp ASC"
+        )?;
+
+        use std::collections::BTreeMap;
+        let mut daily_costs: BTreeMap<String, f64> = BTreeMap::new();
+
+        let chart_rows = stmt_chart.query_map([], |r| {
+            let day: String = r.get(0)?;
+            let tokens: i64 = r.get(1)?;
+            let model: String = r.get(2)?;
+            Ok((day, tokens, model))
+        })?;
+
+        for row in chart_rows {
+            let (day, tokens, model) = row?;
+            let cost = crate::pricing::calculate_cost(tokens, &model, false);
+            *daily_costs.entry(day).or_insert(0.0) += cost;
+        }
+
+        println!("\nCost Trend Chart (Last 10 Days of Activity):");
+        println!("========================================");
+        if daily_costs.is_empty() {
+            println!("No tracking data available to draw chart.");
+        } else {
+            let total_days = daily_costs.len();
+            let skip_count = if total_days > 10 { total_days - 10 } else { 0 };
+            let last_10_days: Vec<(&String, &f64)> = daily_costs.iter().skip(skip_count).collect();
+
+            let mut max_cost = 0.0;
+            for (_, cost) in &last_10_days {
+                if **cost > max_cost {
+                    max_cost = **cost;
+                }
+            }
+
+            let max_bar_width = 30;
+            for (day, cost) in last_10_days {
+                let bar_len = if max_cost > 0.0 {
+                    ((*cost / max_cost) * max_bar_width as f64).round() as usize
+                } else {
+                    0
+                };
+                let bar = "█".repeat(bar_len);
+                println!("{} | {:<30} (${:.4})", day, bar, cost);
+            }
+        }
+        println!("========================================");
+    }
+
     Ok(())
 }
 
@@ -1133,5 +1190,35 @@ mod tests {
         assert_eq!(count, 50);
 
         std::fs::remove_file(&tmp).ok();
+    }
+
+    #[test]
+    fn test_print_stats_with_chart() {
+        let _lock = DB_TEST_LOCK.lock().unwrap();
+        use std::env;
+        let tmp = env::temp_dir().join(format!("rtk_test_chart_{}.db", std::process::id()));
+        env::set_var("RTK_DB_PATH", &tmp);
+
+        // create schema
+        open_db().unwrap();
+
+        // insert a few tracking entries with varying models and dates
+        let conn = Connection::open(&tmp).unwrap();
+        conn.execute(
+            "INSERT INTO tracking (cmd, original_tokens, filtered_tokens, timestamp, model) VALUES
+             ('git diff', 1000, 400, '2026-06-20 12:00:00', 'claude-4.6-sonnet'),
+             ('git diff', 2000, 800, '2026-06-20 13:00:00', 'claude-4.6-sonnet'),
+             ('git status', 500, 100, '2026-06-21 14:00:00', 'gemini-3.5-flash')",
+            []
+        ).unwrap();
+
+        // Print without chart
+        print_stats_with_chart(false).unwrap();
+
+        // Print with chart
+        print_stats_with_chart(true).unwrap();
+
+        std::fs::remove_file(&tmp).ok();
+        env::remove_var("RTK_DB_PATH");
     }
 }

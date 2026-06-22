@@ -285,6 +285,19 @@ fn get_tools_list() -> serde_json::Value {
                 "type": "object",
                 "properties": {}
             }
+        },
+        {
+            "name": "get_budget_status",
+            "description": "Get the current LLM API budget spend and check if it exceeds a limit.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "limit": {
+                        "type": "number",
+                        "description": "Optional budget limit in USD to check against (default: 50.0)"
+                    }
+                }
+            }
         }
     ])
 }
@@ -517,6 +530,27 @@ pub fn execute_tool(name: &str, args: serde_json::Value) -> Result<serde_json::V
                 "text": "pong"
             }]
         })),
+        "get_budget_status" => {
+            let limit = args
+                .get("limit")
+                .and_then(|l| l.as_f64())
+                .unwrap_or(50.0);
+            let status = rtk_db::pricing::check_budget(limit)?;
+            let text = format!(
+                "Budget Limit: ${:.2} USD\nTotal Cost Spent: ${:.6} USD\nPercentage Used: {:.2}%\nExceeded: {}\nStatus: {}",
+                status.limit_usd,
+                status.spent_usd,
+                status.percentage,
+                status.exceeded,
+                if status.exceeded { "🚨 ALERT: Budget limit exceeded!" } else { "✅ Within budget limits." }
+            );
+            Ok(json!({
+                "content": [{
+                    "type": "text",
+                    "text": text
+                }]
+            }))
+        }
         _ => Err(anyhow!("Unknown tool: {}", name)),
     }
 }
@@ -714,5 +748,23 @@ pub fn install_mcp_client(client: &str) -> Result<()> {
             "Unknown client: {}. Supported: claude, cursor, gemini",
             client
         )),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn test_execute_get_budget_status() {
+        let args = json!({
+            "limit": 100.0
+        });
+        let result = execute_tool("get_budget_status", args).unwrap();
+        let content = result.get("content").unwrap().as_array().unwrap();
+        let text = content[0].get("text").unwrap().as_str().unwrap();
+        assert!(text.contains("Budget Limit: $100.00 USD"));
+        assert!(text.contains("Total Cost Spent:"));
     }
 }

@@ -338,6 +338,37 @@ fn test_rtk_budget_and_mcp_cli_lifecycle() {
     assert!(budget_str.contains("Budget Status"));
     assert!(budget_str.contains("Limit:        $10.00"));
 
+    // 1b. Run stats --chart
+    let stats_out = rtk_bin()
+        .current_dir(&temp_dir)
+        .env("RTK_DB_PATH", &db_path)
+        .args(["stats", "--chart"])
+        .output()
+        .expect("rtk not found");
+    assert!(stats_out.status.success());
+    let stats_str = String::from_utf8_lossy(&stats_out.stdout);
+    assert!(stats_str.contains("RTK TOKEN SAVINGS STATS"));
+    assert!(stats_str.contains("Cost Trend Chart"));
+
+    // 1c. Call MCP get_budget_status tool
+    let mcp_budget_out = rtk_bin()
+        .current_dir(&temp_dir)
+        .env("RTK_DB_PATH", &db_path)
+        .env("RTK_INDEX_DB_PATH", &index_db_path)
+        .args([
+            "mcp",
+            "call",
+            "get_budget_status",
+            "--args",
+            "{\"limit\":10.0}",
+        ])
+        .output()
+        .expect("rtk not found");
+    assert!(mcp_budget_out.status.success());
+    let mcp_budget_str = String::from_utf8_lossy(&mcp_budget_out.stdout);
+    assert!(mcp_budget_str.contains("Budget Limit: $10.00 USD"));
+    assert!(mcp_budget_str.contains("Total Cost Spent:"));
+
     // 2. Run model routing suggest
     let model_out = rtk_bin()
         .current_dir(&temp_dir)

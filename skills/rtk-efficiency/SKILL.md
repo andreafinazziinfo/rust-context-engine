@@ -66,12 +66,18 @@ The toolkit automatically scrubs credentials, private keys, JWTs, and high-entro
   - Guard a dangerous command: `rtk config deny add "<pattern>"`
   - Add custom secret patterns: `rtk config dlp add "<regex>"`
 
-## 6. Local Savings Dashboard (`rtk dashboard`)
+## 6. Local Savings Dashboard (`rtk dashboard`) & CLI Trend Chart
 If you or the user want to view the savings dashboard:
 ```bash
 rtk dashboard
 ```
-This compiles local statistics into an HTML dashboard showing invocations, saved tokens, and estimated financial savings in USD, opening automatically in the web browser. Or view raw statistics in-terminal with `rtk stats` (or alias `rtk gain`).
+This compiles local statistics into an HTML dashboard showing invocations, saved tokens, and estimated financial savings in USD, opening automatically in the web browser.
+
+Or view raw statistics directly in the terminal, including a beautiful text-based ASCII cost trend chart:
+```bash
+rtk stats --chart
+```
+*(or shorthand `rtk gain --chart`)*
 
 ## 7. Cache Maintenance & DB Garbage Collection (`rtk gc`)
 To keep disk usage low and ensure fast dashboard queries, RTK implements a 30-day Time-To-Live (TTL) cache retention policy:
@@ -99,3 +105,7 @@ The global telemetry database remains isolated at `~/.local/share/rtk/rtk.db` fo
   ```bash
   rtk telemetry export
   ```
+
+## 10. Self-Regulating Budget MCP Tool (`get_budget_status`)
+When running as an MCP server, RTK exposes a special tool to allow AI agents to check the current budget spend and limit:
+- **`get_budget_status`**: Accepts an optional `limit` parameter (default: 50.0 USD). Returns a detailed text response summarizing budget status, total cost spent, percentage used, and alerts when exceeded, enabling agents to self-regulate.

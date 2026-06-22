@@ -207,6 +207,7 @@ RTK implements a lightweight, high-performance MCP server built directly into th
 *   `project_memory`: Fetch or save project ports, configurations, and setup decisions.
 *   `context_pack`: Compact specific file trees into a tokens-stripped XML payload.
 *   `session_state`: Check or update active tasks and decisions to manage handoffs.
+*   `get_budget_status`: Retrieve the current budget spend and check limit (exposes FinOps budget status to self-regulating agents).
 
 *To install the MCP server into Claude Desktop or Cursor:*
 ```bash
@@ -279,7 +280,7 @@ alias terraform="rtk terraform"
 *   **Rules & Profiles**: `rtk init --profile <low|medium|high|max>`, `rtk sync-rules` (recursively mirrors `.cursor/rules` to subprojects).
 *   **Command Rewriting**: `rtk rewrite "<command>"` (PreToolUse hook engine: auto-allows, denies, or asks for dangerous commands).
 *   **Configuration**: `rtk config show`, `rtk config deny add "<pattern>"`, `rtk config dlp add "<regex>"`.
-*   **Telemetry, Stats & Audit**: `rtk status`, `rtk stats` / `rtk gain` (shorthand savings metrics print), `rtk dashboard` (live Web UI), `rtk audit` (aggregates savings metrics, prints summary and writes `rtk-audit.md`), `rtk telemetry export` (exports Prometheus-compatible scraping metrics).
+*   **Telemetry, Stats & Audit**: `rtk status`, `rtk stats [--chart]` / `rtk gain [--chart]` (prints shorthand savings metrics and displays a beautiful ASCII cost trend chart), `rtk dashboard` (live Web UI), `rtk audit` (aggregates savings metrics, prints summary and writes `rtk-audit.md`), `rtk telemetry export` (exports Prometheus-compatible scraping metrics).
 *   **Dynamic Plugins**: `rtk plugin -- <command>` (runs a command using custom rules from `plugins.toml`).
 
 <details>

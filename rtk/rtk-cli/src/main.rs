@@ -186,9 +186,17 @@ enum Commands {
         subcmd: GraphCommands,
     },
     /// Print token savings statistics
-    Stats,
+    Stats {
+        /// Show text-based ASCII cost trend chart
+        #[arg(short, long)]
+        chart: bool,
+    },
     /// Shorthand alias to print token savings stats (from upstream parity)
-    Gain,
+    Gain {
+        /// Show text-based ASCII cost trend chart
+        #[arg(short, long)]
+        chart: bool,
+    },
     /// Generate a detailed token savings audit report or audit codebase graph
     Audit {
         #[command(subcommand)]
@@ -734,8 +742,8 @@ fn main() {
         Commands::Graph { subcmd } => match subcmd {
             GraphCommands::Export { format, output } => index_cli::graph_export(&format, &output),
         },
-        Commands::Stats => tracking::print_stats(),
-        Commands::Gain => tracking::print_stats(),
+        Commands::Stats { chart } => tracking::print_stats_with_chart(chart),
+        Commands::Gain { chart } => tracking::print_stats_with_chart(chart),
         Commands::Audit { subcmd, output } => match subcmd {
             Some(AuditCommands::Graph) => index_cli::audit_graph(),
             None => tracking::run_audit(&output),
