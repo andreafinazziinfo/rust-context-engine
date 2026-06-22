@@ -1,5 +1,5 @@
 [package]
-name = "rtk-db"
+name = "rtk-context-db"
 version = "2.3.0"
 edition = "2021"
 description = "RTK — SQLite FTS5 context memory database, DLP redaction, and config"

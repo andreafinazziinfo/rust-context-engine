@@ -1,5 +1,5 @@
 [package]
-name = "rtk-index"
+name = "rtk-context-index"
 version = "2.3.0"
 edition = "2021"
 description = "RTK — code graph indexing, symbols navigation, and blast radius impact analyzer"

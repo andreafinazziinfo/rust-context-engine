@@ -1,5 +1,5 @@
 [package]
-name = "rtk-pack"
+name = "rtk-context-pack"
 version = "2.3.0"
 edition = "2021"
 description = "RTK — code layout packing and AST skeleton parser modules"
@@ -15,4 +15,4 @@ tree-sitter-javascript = "0.21"
 tree-sitter-typescript = "0.21"
 tree-sitter-go = "0.21"
 tree-sitter-java = "0.21"
-rtk-db = { version = "2.3.0", path = "../rtk-db" }
+rtk_db = { package = "rtk-context-db", version = "2.3.0", path = "../rtk-db" }

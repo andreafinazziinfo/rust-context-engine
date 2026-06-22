@@ -1,5 +1,5 @@
 [package]
-name = "rtk-cli"
+name = "rtk-context-engine"
 version = "2.3.0"
 edition = "2021"
 description = "RTK — main entrypoint binary and command router CLI"
@@ -17,11 +17,11 @@ serde_json = "1"
 regex = "1"
 serde = { version = "1", features = ["derive"] }
 toml = "0.8"
-rtk-filters = { version = "2.3.0", path = "../rtk-filters" }
-rtk-db = { version = "2.3.0", path = "../rtk-db" }
-rtk-pack = { version = "2.3.0", path = "../rtk-pack" }
-rtk-index = { version = "2.3.0", path = "../rtk-index" }
-rtk-mcp = { version = "2.3.0", path = "../rtk-mcp" }
+rtk_filters = { package = "rtk-context-filters", version = "2.3.0", path = "../rtk-filters" }
+rtk_db = { package = "rtk-context-db", version = "2.3.0", path = "../rtk-db" }
+rtk_pack = { package = "rtk-context-pack", version = "2.3.0", path = "../rtk-pack" }
+rtk_index = { package = "rtk-context-index", version = "2.3.0", path = "../rtk-index" }
+rtk_mcp = { package = "rtk-context-mcp", version = "2.3.0", path = "../rtk-mcp" }
 
 
 

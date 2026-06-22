@@ -1570,26 +1570,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dc897dd8d9e8bd1ed8cdad82b5966c3e0ecae09fb1907d58efaa013543185d0a"
 
 [[package]]
-name = "rtk-cli"
-version = "2.3.0"
-dependencies = [
- "anyhow",
- "clap",
- "insta",
- "proptest",
- "regex",
- "rtk-db",
- "rtk-filters",
- "rtk-index",
- "rtk-mcp",
- "rtk-pack",
- "serde",
- "serde_json",
- "toml",
-]
-
-[[package]]
-name = "rtk-db"
+name = "rtk-context-db"
 version = "2.3.0"
 dependencies = [
  "anyhow",
@@ -1601,7 +1582,26 @@ dependencies = [
 ]
 
 [[package]]
-name = "rtk-filters"
+name = "rtk-context-engine"
+version = "2.3.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "insta",
+ "proptest",
+ "regex",
+ "rtk-context-db",
+ "rtk-context-filters",
+ "rtk-context-index",
+ "rtk-context-mcp",
+ "rtk-context-pack",
+ "serde",
+ "serde_json",
+ "toml",
+]
+
+[[package]]
+name = "rtk-context-filters"
 version = "2.3.0"
 dependencies = [
  "insta",
@@ -1609,7 +1609,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "rtk-index"
+name = "rtk-context-index"
 version = "2.3.0"
 dependencies = [
  "anyhow",
@@ -1630,24 +1630,24 @@ dependencies = [
 ]
 
 [[package]]
-name = "rtk-mcp"
+name = "rtk-context-mcp"
 version = "2.3.0"
 dependencies = [
  "anyhow",
  "dirs",
- "rtk-db",
- "rtk-index",
- "rtk-pack",
+ "rtk-context-db",
+ "rtk-context-index",
+ "rtk-context-pack",
  "serde",
  "serde_json",
 ]
 
 [[package]]
-name = "rtk-pack"
+name = "rtk-context-pack"
 version = "2.3.0"
 dependencies = [
  "anyhow",
- "rtk-db",
+ "rtk-context-db",
  "tree-sitter",
  "tree-sitter-go",
  "tree-sitter-java",
