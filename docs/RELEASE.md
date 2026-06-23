@@ -2,6 +2,8 @@
 
 ## v2.3.1 (Fase C)
 
+See [RELEASE_v2.3.1.md](./RELEASE_v2.3.1.md) · [GitHub release](https://github.com/andreafinazziinfo/rust-context-engine/releases/tag/v2.3.1)
+
 - `rtk validate` subcommand
 - `e2e_smoke.sh` in CI Linux
 - Dogfood: `scripts/setup-dogfood.sh`, `docs/DOGFOOD.md`
