@@ -252,6 +252,7 @@ pub fn dispatch(command: Commands) -> Result<()> {
                 doctor::DoctorOutcome::Critical => std::process::exit(1),
             }
         }
+        Commands::Validate => crate::validate::run_validate(),
         Commands::Estimate => distiller::run_estimate(),
         Commands::SessionState { subcmd } => match subcmd {
             SessionStateCommands::Init => session::session_init().map(|_| {

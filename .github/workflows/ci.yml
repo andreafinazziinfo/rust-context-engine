@@ -62,6 +62,10 @@ jobs:
       if: runner.os == 'Linux'
       run: bash scripts/release_smoke.sh
 
+    - name: E2E smoke (CLOSE-1)
+      if: runner.os == 'Linux'
+      run: bash scripts/e2e_smoke.sh
+
     - name: Security Audit
       if: runner.os == 'Linux'
       uses: actions-rust-lang/audit@v1

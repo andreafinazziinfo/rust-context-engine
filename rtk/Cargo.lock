@@ -1558,7 +1558,7 @@ checksum = "d6f6ff9a378485b298a5286656da665ba74413d36db0979633275d2e708145d4"
 
 [[package]]
 name = "rtk-context-db"
-version = "2.3.0"
+version = "2.3.1"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1571,7 +1571,7 @@ dependencies = [
 
 [[package]]
 name = "rtk-context-engine"
-version = "2.3.0"
+version = "2.3.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -1590,7 +1590,7 @@ dependencies = [
 
 [[package]]
 name = "rtk-context-filters"
-version = "2.3.0"
+version = "2.3.1"
 dependencies = [
  "insta",
  "regex",
@@ -1598,7 +1598,7 @@ dependencies = [
 
 [[package]]
 name = "rtk-context-index"
-version = "2.3.0"
+version = "2.3.1"
 dependencies = [
  "anyhow",
  "ndarray 0.15.6",
@@ -1619,7 +1619,7 @@ dependencies = [
 
 [[package]]
 name = "rtk-context-mcp"
-version = "2.3.0"
+version = "2.3.1"
 dependencies = [
  "anyhow",
  "dirs",
@@ -1632,7 +1632,7 @@ dependencies = [
 
 [[package]]
 name = "rtk-context-pack"
-version = "2.3.0"
+version = "2.3.1"
 dependencies = [
  "anyhow",
  "rtk-context-db",

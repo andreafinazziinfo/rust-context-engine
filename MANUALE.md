@@ -1,4 +1,4 @@
-# 📖 Manuale Completo: RTK Context Engine (v2.3.0)
+# 📖 Manuale Completo: RTK Context Engine (v2.3.1)
 
 **RTK** (Rust Token Killer) è un toolkit proxy a riga di comando e un harness di sviluppo progettato per gli sviluppatori che lavorano con assistenti AI (Cursor, Claude Code, GitHub Copilot, ecc.). Il suo scopo è **tagliare i costi delle API LLM del 60-80%** riducendo il rumore dai log, compattando il codice sorgente con parser AST e offrendo policy di sicurezza e budget locali.
 

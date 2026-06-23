@@ -14,6 +14,7 @@ bash scripts/setup-githooks.sh   # once: pre-push runs cargo fmt --check
 
 ```bash
 bash scripts/dev-gate.sh   # fmt + clippy + cargo test --workspace
+rtk validate               # same gate via CLI (uses dev-gate.sh when present)
 ```
 
 CI runs the same checks on Linux, Windows, and macOS.

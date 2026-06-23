@@ -1,5 +1,11 @@
 # Release checklist (maintainer)
 
+## v2.3.1 (Fase C)
+
+- `rtk validate` subcommand
+- `e2e_smoke.sh` in CI Linux
+- Dogfood: `scripts/setup-dogfood.sh`, `docs/DOGFOOD.md`
+
 After pushing tag `vX.Y.Z`:
 
 1. Wait for [Release workflow](https://github.com/andreafinazziinfo/rust-context-engine/actions/workflows/release.yml) to finish.

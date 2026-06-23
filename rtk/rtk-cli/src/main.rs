@@ -16,6 +16,7 @@ mod plugins;
 mod rewrite;
 mod setup;
 mod sync_rules;
+mod validate;
 
 #[cfg(test)]
 mod fuzz_tests;

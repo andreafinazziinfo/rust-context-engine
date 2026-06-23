@@ -192,6 +192,8 @@ pub(crate) enum Commands {
     },
     /// Check the health of the RTK installation and configuration
     Doctor,
+    /// Run fmt + clippy + tests (dev-gate.sh or cargo workspace gate)
+    Validate,
     /// Estimate token counts and API costs for the active git diff
     #[command(alias = "est")]
     Estimate,
