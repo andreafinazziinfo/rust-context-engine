@@ -221,7 +221,8 @@ mod tests {
 
     #[test]
     fn test_redact_jwt_hs256_header() {
-        let input = "Auth JWT: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.signature";
+        let input =
+            "Auth JWT: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.signature";
         let output = redact(input);
         assert!(output.contains("[REDACTED_JWT]"));
         assert!(!output.contains("eyJhbGci"));

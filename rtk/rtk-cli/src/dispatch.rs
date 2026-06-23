@@ -9,17 +9,19 @@ use rtk_filters::{
 use rtk_pack::pack;
 
 use crate::cli::{
-    AgentsCommands, ArtifactCommands, AuditCommands, BenchmarkCommands, BudgetCommands,
-    Commands, ConfigCommands, ConfigDenyCommands, ConfigDlpCommands, ContextCommands,
-    DepsCommands, FilterCommands, GraphCommands, ImpactCommands, IndexCommands, MemoryCommands,
-    McpCommands, ModelCommands, RefsCommands, SessionStateCommands, SymbolsCommands,
-    TelemetryCommands,
+    AgentsCommands, ArtifactCommands, AuditCommands, BenchmarkCommands, BudgetCommands, Commands,
+    ConfigCommands, ConfigDenyCommands, ConfigDlpCommands, ContextCommands, DepsCommands,
+    FilterCommands, GraphCommands, ImpactCommands, IndexCommands, McpCommands, MemoryCommands,
+    ModelCommands, RefsCommands, SessionStateCommands, SymbolsCommands, TelemetryCommands,
 };
 use crate::filter_pipeline::{
     execute_with_filter, run_distilled, run_filtered, run_filtered_combined, run_filtered_stderr,
     FilterMode,
 };
-use crate::{agents, artifact, benchmark, dashboard, distiller, doctor, dotnet, index_cli, plugins, rewrite, setup, sync_rules};
+use crate::{
+    agents, artifact, benchmark, dashboard, distiller, doctor, dotnet, index_cli, plugins, rewrite,
+    setup, sync_rules,
+};
 
 pub fn dispatch(command: Commands) -> Result<()> {
     match command {
