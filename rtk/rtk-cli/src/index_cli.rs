@@ -131,19 +131,42 @@ pub fn graph_export(format: &str, output: &str) -> Result<()> {
         ));
     }
 
+    let out = Path::new(output);
     println!(
         "Graph export starting... format: {}, output: {}",
         format, output
     );
-    let count = rtk_index::export_obsidian_graph(Path::new(output))?;
+    let count = rtk_index::export_obsidian_graph(out)?;
+    let status = rtk_index::get_index_status()?;
+    let index_md = out.join("index.md");
+    let summary = format!(
+        "# RTK Code Graph\n\n\
+         - Symbols: {}\n\
+         - Edges: {}\n\
+         - Graph coverage: {:.1}%\n\
+         - Notes exported: {}\n\
+         - Index stale: {}\n\n\
+         Open any `Symbol (file).md` note for backlinks.\n",
+        status.symbols_count,
+        status.edges_count,
+        status.graph_coverage,
+        count,
+        if status.stale {
+            "yes — run `rtk index run`"
+        } else {
+            "no"
+        }
+    );
+    std::fs::write(&index_md, summary)?;
     println!(
-        "✅ Obsidian graph exported successfully ({} symbol markdown files created in '{}')",
+        "✅ Obsidian graph exported successfully ({} symbol markdown files + index.md in '{}')",
         count, output
     );
     Ok(())
 }
 
 pub fn audit_graph() -> Result<()> {
+    let status = rtk_index::get_index_status()?;
     let metrics = rtk_index::get_graph_metrics()?;
     println!("📊 RTK Code Intelligence Graph Audit Report");
     println!("==========================================");
@@ -151,6 +174,29 @@ pub fn audit_graph() -> Result<()> {
     println!("Total Edges/Calls:  {}", metrics.edges_count);
     println!("Graph Coverage:     {:.2}%", metrics.graph_coverage);
     println!("Query Latency:      {:.4} ms", metrics.query_latency_ms);
+    println!(
+        "Last Indexed:       {}",
+        status
+            .last_indexed
+            .map(|ts| ts.to_string())
+            .unwrap_or_else(|| "never".into())
+    );
+    println!(
+        "Index Stale:        {}",
+        if status.stale { "yes" } else { "no" }
+    );
     println!("==========================================");
+    if metrics.symbols_count == 0 {
+        println!("💡 Empty graph — run: rtk index run");
+    } else if status.stale {
+        println!("💡 Stale index — run: rtk index run");
+    }
+    if metrics.graph_coverage < 50.0 && metrics.symbols_count > 0 {
+        println!(
+            "💡 Low coverage ({:.0}%) — many orphan symbols",
+            metrics.graph_coverage
+        );
+    }
+    println!("💡 Export: rtk graph export --output ./graph-notes");
     Ok(())
 }

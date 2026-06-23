@@ -4,6 +4,33 @@ set -euo pipefail
 
 cd "$(dirname "$0")"
 
+PREBUILT_TAR=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --prebuilt)
+      PREBUILT_TAR="${2:?missing tar path after --prebuilt}"
+      shift 2
+      ;;
+    *)
+      echo "Unknown option: $1 (supported: --prebuilt PATH.tar.gz)" >&2
+      exit 1
+      ;;
+  esac
+done
+
+if [ -n "$PREBUILT_TAR" ]; then
+  echo "📦 Installing prebuilt RTK from $PREBUILT_TAR → ~/.local/bin/rtk"
+  tmp="$(mktemp -d)"
+  trap 'rm -rf "$tmp"' EXIT
+  tar -xzf "$PREBUILT_TAR" -C "$tmp"
+  bin="$(find "$tmp" -maxdepth 2 -type f -name rtk | head -1)"
+  [ -n "$bin" ] || { echo "❌ no rtk binary in archive" >&2; exit 1; }
+  mkdir -p "$HOME/.local/bin"
+  install -m 755 "$bin" "$HOME/.local/bin/rtk"
+  echo "✅ Installed $( "$HOME/.local/bin/rtk" --version )"
+  exit 0
+fi
+
 echo "🚀 Starting AI Efficiency Toolkit Installation..."
 
 # 1. Check for Rust / Cargo

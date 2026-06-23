@@ -130,8 +130,8 @@ RTK è un prodotto **reale e ben archittettato** (6 crate, ~12k LOC, CI attiva, 
 | 2 | DOCTOR-1 | `rtk doctor` esteso + exit 0/1/2 | ✅ |
 | 3 | ARCH-2 | `filter_pipeline.rs` estratto | ✅ |
 | 4 | CI-3 | Gate `token_savings` in CI + script | ✅ |
-| 5 | REL-1 | Release smoke / install parity | ⬜ |
-| 6 | GRAPH-1 | Graph UX export/audit polish | ⬜ |
+| 5 | REL-1 | Release smoke / install parity | ✅ |
+| 6 | GRAPH-1 | Graph UX export/audit polish | ✅ |
 
 **Regola merge Sprint 1:** nessuna PR feature senza **DEV-WSL-2** verde (fmt + clippy + test).
 
@@ -532,6 +532,8 @@ Aggiornare a ogni merge. **FIN-1** è il fix pricing; non duplicare con alias se
 | GRD-2 | 2 | S3 | ✅ | strict_chained |
 | ARCH-3 | 2 | S3 | ✅ | env var table |
 | CI-3 | 2 | S4 | ✅ | token_savings gate + benchmark_gate.sh |
+| REL-1 | 2 | S4 | ✅ | release_smoke.sh + install --prebuilt |
+| GRAPH-1 | 2 | S4 | ✅ | graph audit hints + index.md export |
 
 ⬜ TODO · 🔄 IN PROGRESS · ✅ DONE
 

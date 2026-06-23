@@ -58,6 +58,10 @@ jobs:
       if: runner.os == 'Linux'
       run: cargo test --manifest-path rtk/Cargo.toml -p rtk-context-filters token_savings
 
+    - name: Release smoke (REL-1)
+      if: runner.os == 'Linux'
+      run: bash scripts/release_smoke.sh
+
     - name: Security Audit
       if: runner.os == 'Linux'
       uses: actions-rust-lang/audit@v1
