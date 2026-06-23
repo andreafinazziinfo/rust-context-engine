@@ -32,7 +32,19 @@ fn is_ignored(path: &Path, root: &Path, patterns: &[String]) -> bool {
     let rel_path = path.strip_prefix(root).unwrap_or(path);
     let path_str = rel_path.to_string_lossy().replace('\\', "/");
 
-    for sys in &["target", ".git", "node_modules", ".rtk", "dist", "build"] {
+    for sys in &[
+        "target",
+        ".git",
+        "node_modules",
+        ".rtk",
+        "dist",
+        "build",
+        "venv",
+        ".venv",
+        "__pycache__",
+        ".cargo",
+        ".venvs",
+    ] {
         if path_str.split('/').any(|part| part == *sys) {
             return true;
         }

@@ -4,7 +4,7 @@
 |-------|--------|
 | **Repo** | `rust-context-engine` (workspace `rtk/`) |
 | **Baseline audit** | HEAD `a3c8258` · release / crates.io **v2.3.0** |
-| **Voto attuale** | **8.6 / 10** (post-S3, 2026-06-23) |
+| **Voto attuale** | **8.8 / 10** (post-S4 + CI verde, 2026-06-23) |
 | **Sprint 3 chiuso** | 2026-06-23 — PACK/DB/FILT/GRD/ARCH-3 |
 | **Obiettivo** | **≥ 9.0** su ogni sezione entro 4 sprint |
 | **Creato** | 2026-06-23 |
@@ -69,13 +69,13 @@ RTK è un prodotto **reale e ben archittettato** (6 crate, ~12k LOC, CI attiva, 
 | DLP / redaction | 7.5 | 9.0 | S1 ✅ |
 | Rewrite / guardrail | 8.0 | 9.0 | S1–S3 ✅ |
 | DB / tracking / memory | 8.5 | 9.0 | S3 ✅ |
-| Index AST / graph | 8.5 | 9.5 | S1–S2 ✅ |
+| Index AST / graph | 9.0 | 9.5 | S1–S4 ✅ |
 | MCP server | 8.0 | 9.0 | S2 ✅ |
 | Pack / skeleton | 8.5 | 9.0 | S3 ✅ |
 | Pricing / FinOps | 8.0 | 9.0 | S1 ✅ |
 | Dashboard / telemetry | 8.0 | 9.0 | S2 ✅ |
 | Testing | 8.5 | 9.5 | S1–S2 ✅ |
-| CI/CD | 8.0 | 9.5 | S1–S2 |
+| CI/CD | 9.0 | 9.5 | S1–S4 ✅ |
 | Docs / README | 8.0 | 9.5 | S1–S2 ✅ |
 
 **Definizione “9+” per sezione:** zero bug P0; test automatici su casi critici; README/CLI allineati al build default; CI verde; nessun claim non verificabile.
@@ -91,7 +91,7 @@ RTK è un prodotto **reale e ben archittettato** (6 crate, ~12k LOC, CI attiva, 
 | **S1 Fondamenta** | Dev gate WSL · fix pricing · lazy index · DLP/GRD · MCP version · Cargo.lock · docs onesti | ✅ Gate verde · IDX-1/2 · FIN-1 · MCP-1 · DOC-1 · DLP-1 · GRD-1 · ARCH-1 |
 | **S2 Affidabilità** | MCP tests · memory · filtri golden · CI matrix | ✅ |
 | **S3 Qualità** | tiktoken · pack limits · git show/branch · GC throttle · strict_chained | ✅ PACK-1/2 · DB-2/3 · FILT-2/3 · GRD-2 · ARCH-3 |
-| **S4 Polish** | doctor · benchmark gate · release smoke · graph UX | ✅ REL/GRAPH/CI-3 · TST-4 push pending |
+| **S4 Polish** | doctor · benchmark gate · release smoke · graph UX | ✅ |
 
 ### 3.2 Sprint 1 — ordine di esecuzione (P0 → P1)
 
@@ -480,14 +480,14 @@ Progetto **9+** quando tutti veri:
 | # | Criterio |
 |---|----------|
 | 0 | Gate DEV-WSL-1/2 documentato e usato | ✅ |
-| 1 | `cargo test --workspace` verde su Ubuntu + Windows CI | 🔄 (locale ✅, CI-1 pending) |
+| 1 | `cargo test --workspace` verde su Ubuntu + Windows CI | ✅ |
 | 2 | README allineato al build default | ✅ |
 | 3 | Lazy index: `symbols find` out-of-box | ✅ |
 | 4 | DLP base64 + deny chained verdi | ✅ |
-| 5 | MCP version = crate version; 8 tool testati | 🔄 (version ✅, MCP-4 pending) |
-| 6 | `Cargo.lock` + `cargo build --locked` | 🔄 (lock ✅, CI-2 pending) |
+| 5 | MCP version = crate version; 8 tool testati | ✅ |
+| 6 | `Cargo.lock` + `cargo build --locked` | ✅ |
 | 7 | Benchmark regression gate CI | ✅ |
-| 8 | `rtk doctor` OK post-`init --profile high` | 🔄 (doctor ✅, smoke manuale pending) |
+| 8 | `rtk doctor` OK post-`init --profile high` | 🔄 (doctor ✅; smoke manuale opzionale) |
 
 ---
 
@@ -522,7 +522,8 @@ Aggiornare a ogni merge. **FIN-1** è il fix pricing; non duplicare con alias se
 | IDX-3 | 2 | S2 | ✅ | analyze_impact |
 | TST-3 | 2 | S2 | ✅ | e2e_smoke.sh |
 | TST-6 | 2 | S2 | ✅ | FTS concurrent |
-| TST-4 | 2 | S2 | 🔄 | CI push pending |
+| TST-4 | 2 | S2 | ✅ | CI matrix verde 3 OS |
+| IDX-6 | 2 | S4 | ✅ | exclude venv/.cargo from index scan |
 | PACK-1 | 2 | S3 | ✅ | pack --limit count_tokens |
 | PACK-2 | 2 | S3 | ✅ | DLP pack test |
 | DB-2 | 2 | S3 | ✅ | feature tiktoken |
