@@ -67,15 +67,15 @@ RTK è un prodotto **reale e ben archittettato** (6 crate, ~12k LOC, CI attiva, 
 | Filtri input | 8.0 | 9.0 | S2 |
 | DLP / redaction | 7.5 | 9.0 | S1 ✅ |
 | Rewrite / guardrail | 7.5 | 9.0 | S1 ✅ |
-| DB / tracking / memory | 7.5 | 9.0 | S2 |
-| Index AST / graph | 8.0 | 9.5 | S1 ✅ |
-| MCP server | 7.0 | 9.0 | S2 |
+| DB / tracking / memory | 8.0 | 9.0 | S2 ✅ |
+| Index AST / graph | 8.5 | 9.5 | S1–S2 ✅ |
+| MCP server | 8.0 | 9.0 | S2 ✅ |
 | Pack / skeleton | 7.5 | 9.0 | S3 |
 | Pricing / FinOps | 8.0 | 9.0 | S1 ✅ |
-| Dashboard / telemetry | 7.0 | 9.0 | S3 |
-| Testing | 8.0 | 9.5 | S1–S2 |
-| CI/CD | 7.5 | 9.5 | S1–S2 |
-| Docs / README | 7.5 | 9.5 | S1 ✅ |
+| Dashboard / telemetry | 7.5 | 9.0 | S3 |
+| Testing | 8.5 | 9.5 | S1–S2 ✅ |
+| CI/CD | 8.0 | 9.5 | S1–S2 |
+| Docs / README | 8.0 | 9.5 | S1–S2 ✅ |
 
 **Definizione “9+” per sezione:** zero bug P0; test automatici su casi critici; README/CLI allineati al build default; CI verde; nessun claim non verificabile.
 
@@ -490,6 +490,12 @@ Aggiornare a ogni merge. **FIN-1** è il fix pricing; non duplicare con alias se
 | DB-1 | 2 | S2 | ✅ | memory_set preserves created_at |
 | DB-2 | 2 | S3 | ⬜ | tiktoken feature |
 | DASH-1 | 2 | S3 | ✅ | top_saver vs most_frequent fix |
+| DOC-4 | 2 | S2 | ✅ | limitations.md post-IDX/DLP/GRD |
+| DB-4 | 2 | S2 | ✅ | README FTS5 default |
+| IDX-3 | 2 | S2 | ✅ | analyze_impact single read |
+| TST-3 | 2 | S2 | ✅ | scripts/e2e_smoke.sh |
+| TST-6 | 2 | S2 | ✅ | concurrent memory FTS |
+| TST-4 | 2 | S2 | 🔄 | CI matrix green on push |
 | PACK-1 | 2 | S3 | ⬜ | limit tokens |
 | CI-3 | 2 | S4 | ⬜ | benchmark gate |
 
@@ -504,7 +510,7 @@ Aggiornare a ogni merge. **FIN-1** è il fix pricing; non duplicare con alias se
 | Audit chat | 2026-06-23 · score 7.2/10 |
 | File critici | `dlp.rs`, `rewrite.rs`, `rtk-index/lib.rs`, `rtk-mcp/lib.rs`, `pricing.rs` |
 | Proof Windows | `rtk index run` → 401 symbols |
-| Proof WSL | fmt ✅ clippy ✅ test ✅ · `bash scripts/dev-gate.sh` |
+| Proof WSL | fmt ✅ clippy ✅ test ✅ · `dev-gate.sh` · `e2e_smoke.sh` |
 | Piano review | 2026-06-23 — dedup FIN-1, PACK DLP verificato, CI vs locale chiarito |
 
 ---
@@ -514,7 +520,8 @@ Aggiornare a ogni merge. **FIN-1** è il fix pricing; non duplicare con alias se
 | Data | Modifica |
 |------|----------|
 | 2026-06-23 | Creazione iniziale |
-| 2026-06-23 | Sprint 1 chiuso: §9 ✅, scorecard aggiornato, CI-1 → S2 |
+| 2026-06-23 | Sprint 2 chiuso (core): §3.3, scorecard 8.2, §9 aggiornato |
+| 2026-06-23 | Sprint 1 chiuso: §9 ✅, scorecard aggiornato |
 
 ---
 
