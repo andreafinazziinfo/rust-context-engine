@@ -7,14 +7,14 @@ class Rtk < Formula
   if OS.mac?
     if Hardware::CPU.arm?
       url "https://github.com/andreafinazziinfo/rust-context-engine/releases/download/v2.3.1/rtk-macos-arm64.tar.gz"
-      sha256 "d503b991fc388cd95e5e67e9b0970c9043af7f46987aec4690153e8c0fcee93f"
+      sha256 "b8f299788d080f7f004e7d2421f978f0c2db4aec661f4ae9c498d2995d68d124"
     else
       url "https://github.com/andreafinazziinfo/rust-context-engine/releases/download/v2.3.1/rtk-macos-amd64.tar.gz"
-      sha256 "f20d92f2b1c41c4d2a7f8b0205a162a28783f30ef71232611d5903ee4ad855ce"
+      sha256 "8b6ae6d5b6ffb598fbcce775737fe936a181da4aaca2378d8380f3b75fc86bca"
     end
   elsif OS.linux?
     url "https://github.com/andreafinazziinfo/rust-context-engine/releases/download/v2.3.1/rtk-linux-amd64.tar.gz"
-    sha256 "9fd1c9160566e95a6c72ea8f09e1e37346e2e8ec68f1adf01939ac08c1d039b5"
+    sha256 "09f83bf0dc93aa3555378d40f91d30411997a6261e7d67edc2e6118dbd4c1848"
   end
 
   def install

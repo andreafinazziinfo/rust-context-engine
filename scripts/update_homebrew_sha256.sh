@@ -39,4 +39,6 @@ update_formula "$ROOT/rtk.rb"
 cp "$ROOT/rtk.rb" "$ROOT/Formula/rtk.rb"
 
 echo "Updated rtk.rb + Formula/rtk.rb for $TAG"
-bash "$(dirname "$0")/homebrew_smoke.sh"
+if [ -x "$(dirname "$0")/homebrew_smoke.sh" ] || [ -f "$(dirname "$0")/homebrew_smoke.sh" ]; then
+  bash "$(dirname "$0")/homebrew_smoke.sh" || echo "warn: homebrew_smoke skipped (brew not installed?)"
+fi

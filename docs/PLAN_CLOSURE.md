@@ -59,7 +59,7 @@ CLOSE-5 (ultimo)
 
 - [x] `e2e_smoke` verde in CI Linux (step aggiunto; verifica su push)
 - [x] `rtk validate` disponibile
-- [ ] Release v2.3.1 pubblicata (tag + asset GitHub + formula sha256)
+- [x] Release v2.3.1 pubblicata (tag + asset GitHub + formula sha256)
 - [ ] Homebrew smoke passato almeno una volta su macOS reale
 - [x] Dogfood: `scripts/setup-dogfood.sh` + DOGFOOD.md
 - [ ] Nessun bug **blocker** aperto (crash, data loss, rewrite sbagliato)
@@ -154,7 +154,7 @@ Output atteso: **backlog max 5 item** oppure dichiarazione esplicita:
 |----|:------:|------|
 | CLOSE-1 | ✅ | e2e_smoke in ci.yml |
 | CLOSE-2 | ✅ | rtk validate |
-| CLOSE-3 | 🔄 | version 2.3.1; tag + formula after release |
+| CLOSE-3 | ✅ | release v2.3.1 tagged + formula sha256 |
 | CLOSE-4 | ⬜ | brew smoke macOS (manuale) |
 | CLOSE-5 | ✅ | setup-dogfood + DOGFOOD.md |
 | Fase D | ⬜ | adozione 2–4 sett |
