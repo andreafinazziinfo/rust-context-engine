@@ -17,6 +17,7 @@ Thumbs.db
 # Database files
 *.db
 *.sqlite
+.rtk/
 hook-audit.log
 dashboard.html
 

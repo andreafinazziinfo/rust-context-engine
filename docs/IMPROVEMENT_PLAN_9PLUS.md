@@ -160,7 +160,7 @@ cd rust-context-engine/rtk
 # B — sync da Windows (repo già su /mnt/c)
 mkdir -p ~/dev/rust-context-engine
 rsync -a --exclude target --exclude .rtk \
-  /mnt/c/Users/Andrea/dev/rust-context-engine/ ~/dev/rust-context-engine/
+  /mnt/c/Users/YOU/dev/rust-context-engine/ ~/dev/rust-context-engine/
 cd ~/dev/rust-context-engine/rtk
 ```
 
