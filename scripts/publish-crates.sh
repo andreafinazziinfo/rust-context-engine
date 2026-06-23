@@ -5,22 +5,17 @@ set -euo pipefail
 source "${HOME}/.cargo/env" 2>/dev/null || true
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-MANIFEST="$ROOT/rtk/Cargo.toml"
+RTK="$ROOT/rtk"
 
-# Leaf crates: no rtk workspace deps — safe to `cargo package` before anything is on crates.io.
-LEAF_PACKAGES=(
-  rtk-context-db
-  rtk-context-filters
-  rtk-context-index
+# member dir : crates.io name
+CRATES=(
+  rtk-db:rtk-context-db
+  rtk-filters:rtk-context-filters
+  rtk-index:rtk-context-index
+  rtk-pack:rtk-context-pack
+  rtk-mcp:rtk-context-mcp
+  rtk-cli:rtk-context-engine
 )
-
-DEP_PACKAGES=(
-  rtk-context-pack
-  rtk-context-mcp
-  rtk-context-engine
-)
-
-PACKAGES=("${LEAF_PACKAGES[@]}" "${DEP_PACKAGES[@]}")
 
 DRY="${DRY:-0}"
 SKIP_TESTS="${SKIP_TESTS:-0}"
@@ -29,41 +24,51 @@ if [ "${1:-}" = "--dry-run" ]; then
   shift
 fi
 
-cd "$ROOT/rtk"
+cd "$RTK"
 cargo fmt --check
 if [ "$SKIP_TESTS" != "1" ]; then
   cargo test --workspace
 fi
 
+# pack/mcp/cli need upstream rtk crates on crates.io for `cargo package`
+needs_registry_deps() {
+  case "$1" in
+    rtk-pack|rtk-mcp|rtk-cli) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
 publish_one() {
-  local pkg="$1"
+  local dir="$1"
   local attempt
   for attempt in 1 2 3 4 5; do
-    if cargo publish --manifest-path "$MANIFEST" -p "$pkg" "$@"; then
+    if (cd "$RTK/$dir" && cargo publish --allow-dirty "$@"); then
       return 0
     fi
     if [ "$attempt" -lt 5 ]; then
-      echo "retry $pkg in 60s (crates.io index may lag)..."
+      echo "retry $dir in 60s (crates.io index may lag)..."
       sleep 60
     fi
   done
   return 1
 }
 
-for pkg in "${PACKAGES[@]}"; do
-  echo "== publish $pkg =="
+for entry in "${CRATES[@]}"; do
+  dir="${entry%%:*}"
+  name="${entry##*:}"
+  echo "== publish $name ($dir) =="
+
   if [ "$DRY" = "1" ]; then
-    case " $pkg " in
-      *" rtk-context-pack "*|*" rtk-context-mcp "*|*" rtk-context-engine "*)
-        echo "skip dry-run: $pkg needs upstream rtk crates on crates.io first"
-        echo "  → run without --dry-run after cargo login"
-        continue
-        ;;
-    esac
-    cargo package --manifest-path "$MANIFEST" -p "$pkg" --allow-dirty "$@"
+    if needs_registry_deps "$dir"; then
+      echo "skip dry-run: $name needs upstream rtk crates on crates.io first"
+      echo "  → run without --dry-run after cargo login"
+      continue
+    fi
+    (cd "$RTK/$dir" && cargo package --allow-dirty "$@")
     continue
   fi
-  publish_one "$pkg" "$@"
+
+  publish_one "$dir" "$@"
   echo "waiting for index..."
   sleep 45
 done
