@@ -82,7 +82,7 @@ fn handle_request(req: &JsonRpcRequest) -> Option<JsonRpcResponse> {
                 },
                 "serverInfo": {
                     "name": "rtk-mcp",
-                    "version": "0.1.0"
+                    "version": env!("CARGO_PKG_VERSION")
                 }
             });
             Some(JsonRpcResponse {

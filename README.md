@@ -164,7 +164,7 @@ graph TD
 
     %% Nodes
     Agent[🤖 AI Agent / IDE Client<br/>Cursor, Claude Code, Windsurf]:::client
-    MCP[🔌 RTK MCP Server<br/>rtk mcp serve]:::core
+    MCP[🔌 RTK MCP Server<br/>rtk mcp start]:::core
     CLI[💻 RTK CLI<br/>rtk symbols, rtk memory]:::core
     
     subgraph DB["🗄️ Unified Local Database (.rtk/rtk.db)"]
@@ -216,10 +216,23 @@ rtk mcp install --client cursor
 ```
 
 ### 3. Hybrid Semantic Search & Memory
-RTK combines standard full-text lexical search (SQLite FTS5) with local vector search:
-*   **No Cloud Latency**: Uses `tract-onnx` and HuggingFace tokenizers to generate embeddings locally on your machine.
+RTK combines standard full-text lexical search (SQLite FTS5) with optional local vector search (see **Default vs Full build** below):
+*   **No Cloud Latency** *(Full build)*: Uses `tract-onnx` and HuggingFace tokenizers to generate embeddings locally on your machine.
 *   **Episodic Memory**: Active reasoning steps (stored via `rtk think`) and setup notes are cross-referenced semantically, allowing the agent to retrieve project state without RAG decay or context bloat.
 *   **Context Compaction**: `rtk context compact` runs an automatic compaction on old session states and consolidates task lists inside `session_state`, keeping the active token window slim.
+
+### Default vs Full build
+
+| Capability | Default (`cargo install rtk-context-engine`) | Full (`--features embeddings`) |
+|---|---|---|
+| Command filters + DLP | yes | yes |
+| FTS5 memory + `rtk pack` | yes | yes |
+| Code graph (`symbols`, `refs`, `impact`) | yes | yes |
+| MCP server (`rtk mcp start`) | yes | yes |
+| Hybrid ONNX vector search | no | yes |
+| GPU backends (CUDA/CoreML/DirectML) | no | optional feature flags |
+
+The default release binary matches the **Default** column. Hybrid search requires building with `--features embeddings` (and optional `onnx-*` backends).
 
 ---
 

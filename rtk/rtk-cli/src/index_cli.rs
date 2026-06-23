@@ -98,6 +98,31 @@ pub fn index_run() -> Result<()> {
     Ok(())
 }
 
+pub fn index_status(json: bool) -> Result<()> {
+    let status = rtk_index::get_index_status()?;
+    if json {
+        println!("{}", serde_json::to_string_pretty(&status)?);
+        return Ok(());
+    }
+    println!("RTK Index Status");
+    println!("================");
+    println!("Symbols:        {}", status.symbols_count);
+    println!("Edges:          {}", status.edges_count);
+    println!(
+        "Last indexed:   {}",
+        status
+            .last_indexed
+            .map(|ts| ts.to_string())
+            .unwrap_or_else(|| "never".into())
+    );
+    println!("Graph coverage: {:.2}%", status.graph_coverage);
+    println!(
+        "Stale:          {}",
+        if status.stale { "yes" } else { "no" }
+    );
+    Ok(())
+}
+
 pub fn graph_export(format: &str, output: &str) -> Result<()> {
     if format.to_lowercase() != "obsidian" {
         return Err(anyhow::anyhow!(

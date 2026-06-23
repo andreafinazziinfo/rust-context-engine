@@ -45,7 +45,18 @@ fn is_denied(cmd: &str) -> bool {
     is_denied_internal(cmd, &config.denied_commands)
 }
 
-fn is_denied_internal(cmd: &str, custom_denied: &[String]) -> bool {
+fn split_segments(cmd: &str) -> Vec<String> {
+    static SEGMENT_SPLIT: LazyLock<Regex> =
+        LazyLock::new(|| Regex::new(r"\s*&&\s*|\s*;\s*|\s*\|\|\s*|\s*\|\s*").unwrap());
+    SEGMENT_SPLIT
+        .split(cmd)
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(String::from)
+        .collect()
+}
+
+fn segment_denied(segment: &str, custom_denied: &[String]) -> bool {
     static DENY: LazyLock<Vec<Regex>> = LazyLock::new(|| {
         vec![
             Regex::new(r"^rm\s+-rf?\s+/").unwrap(),
@@ -53,21 +64,31 @@ fn is_denied_internal(cmd: &str, custom_denied: &[String]) -> bool {
             Regex::new(r"^git\s+reset\s+--hard").unwrap(),
         ]
     });
-    if DENY.iter().any(|re| re.is_match(cmd)) {
+    if DENY.iter().any(|re| re.is_match(segment)) {
         return true;
     }
 
     for pattern in custom_denied {
         if let Ok(re) = Regex::new(pattern) {
-            if re.is_match(cmd) {
+            if re.is_match(segment) {
                 return true;
             }
-        } else if cmd.contains(pattern) {
+        } else if segment.contains(pattern) {
             return true;
         }
     }
 
     false
+}
+
+fn is_denied_internal(cmd: &str, custom_denied: &[String]) -> bool {
+    let segments = split_segments(cmd);
+    if segments.is_empty() {
+        return segment_denied(cmd, custom_denied);
+    }
+    segments
+        .iter()
+        .any(|seg| segment_denied(seg, custom_denied))
 }
 
 fn is_chained(cmd: &str) -> bool {
@@ -232,6 +253,13 @@ mod tests {
         assert_eq!(auto_rewrite("ls | grep foo"), None);
         assert_eq!(auto_rewrite("pytest || exit 1"), None);
         assert_eq!(ask_rewrite("git push && echo ok"), None);
+    }
+
+    #[test]
+    fn test_chained_deny_rules() {
+        assert!(is_denied("git status && git push origin main --force"));
+        assert!(is_denied("echo ok; rm -rf /"));
+        assert!(is_denied("true || git reset --hard"));
     }
 
     #[test]

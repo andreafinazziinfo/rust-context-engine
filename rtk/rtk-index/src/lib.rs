@@ -6,6 +6,34 @@ pub mod embeddings;
 pub mod graph;
 pub mod parser;
 
+const STALE_SECS: i64 = 86400;
+
+/// Re-index project when empty or older than 24h.
+pub fn ensure_index_fresh(project_dir: &Path) -> Result<()> {
+    let conn = db::open_db()?;
+    let symbol_count: i64 = conn.query_row("SELECT COUNT(*) FROM symbols", [], |r| r.get(0))?;
+    if symbol_count == 0 {
+        let _ = index_project(project_dir)?;
+        return Ok(());
+    }
+    let now: i64 = conn.query_row("SELECT CAST(strftime('%s','now') AS INTEGER)", [], |r| {
+        r.get(0)
+    })?;
+    let max_indexed: i64 = conn.query_row(
+        "SELECT COALESCE(MAX(last_indexed), 0) FROM file_hashes",
+        [],
+        |r| r.get(0),
+    )?;
+    if max_indexed == 0 || now - max_indexed > STALE_SECS {
+        let _ = index_project(project_dir)?;
+    }
+    Ok(())
+}
+
+fn ensure_fresh_cwd() -> Result<()> {
+    ensure_index_fresh(&std::env::current_dir()?)
+}
+
 pub fn index_project(project_dir: &Path) -> Result<usize> {
     let files = parser::scan_directory(project_dir)?;
     let conn = db::open_db()?;
@@ -68,11 +96,13 @@ pub fn index_project(project_dir: &Path) -> Result<usize> {
 }
 
 pub fn query_symbols(name_query: &str) -> Result<Vec<db::DbSymbol>> {
+    ensure_fresh_cwd()?;
     let conn = db::open_db()?;
     db::find_symbols(&conn, name_query)
 }
 
 pub fn query_dependencies(file_path: &str) -> Result<Vec<(db::DbSymbol, Vec<String>)>> {
+    ensure_fresh_cwd()?;
     let conn = db::open_db()?;
     let all_syms = db::get_all_symbols(&conn)?;
     let all_deps = db::get_all_dependencies(&conn)?;
@@ -93,11 +123,13 @@ pub fn query_dependencies(file_path: &str) -> Result<Vec<(db::DbSymbol, Vec<Stri
 }
 
 pub fn query_references(symbol_name: &str) -> Result<Vec<db::DbSymbol>> {
+    ensure_fresh_cwd()?;
     let conn = db::open_db()?;
     db::get_symbol_references(&conn, symbol_name)
 }
 
 pub fn analyze_impact(symbol_name: &str) -> Result<Vec<db::DbSymbol>> {
+    ensure_fresh_cwd()?;
     let conn = db::open_db()?;
     let all_syms = db::get_all_symbols(&conn)?;
     let all_deps = db::get_all_dependencies(&conn)?;
@@ -137,6 +169,44 @@ pub struct GraphMetrics {
     pub edges_count: usize,
     pub query_latency_ms: f64,
     pub graph_coverage: f64,
+}
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct IndexStatus {
+    pub symbols_count: usize,
+    pub edges_count: usize,
+    pub last_indexed: Option<i64>,
+    pub graph_coverage: f64,
+    pub stale: bool,
+}
+
+pub fn get_index_status() -> Result<IndexStatus> {
+    let conn = db::open_db()?;
+    let symbols_count: usize = conn.query_row("SELECT COUNT(*) FROM symbols", [], |r| r.get(0))?;
+    let edges_count: usize =
+        conn.query_row("SELECT COUNT(*) FROM dependencies", [], |r| r.get(0))?;
+    let last_indexed: Option<i64> = conn
+        .query_row("SELECT MAX(last_indexed) FROM file_hashes", [], |r| {
+            r.get(0)
+        })
+        .ok();
+    let now: i64 = conn.query_row("SELECT CAST(strftime('%s','now') AS INTEGER)", [], |r| {
+        r.get(0)
+    })?;
+    let stale = symbols_count == 0
+        || match last_indexed {
+            None => true,
+            Some(0) => true,
+            Some(ts) => now - ts > STALE_SECS,
+        };
+    let metrics = get_graph_metrics()?;
+    Ok(IndexStatus {
+        symbols_count,
+        edges_count,
+        last_indexed,
+        graph_coverage: metrics.graph_coverage,
+        stale,
+    })
 }
 
 pub fn export_obsidian_graph(output_dir: &Path) -> Result<usize> {

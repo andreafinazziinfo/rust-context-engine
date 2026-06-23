@@ -471,6 +471,12 @@ enum ImpactCommands {
 enum IndexCommands {
     /// Force complete project re-indexing
     Run,
+    /// Show index freshness and coverage
+    Status {
+        /// Output JSON
+        #[arg(long)]
+        json: bool,
+    },
 }
 
 #[derive(Subcommand, Debug)]
@@ -749,6 +755,7 @@ fn main() {
         },
         Commands::Index { subcmd } => match subcmd {
             IndexCommands::Run => index_cli::index_run(),
+            IndexCommands::Status { json } => index_cli::index_status(json),
         },
         Commands::Graph { subcmd } => match subcmd {
             GraphCommands::Export { format, output } => index_cli::graph_export(&format, &output),

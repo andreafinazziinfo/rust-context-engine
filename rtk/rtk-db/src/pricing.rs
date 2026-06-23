@@ -291,12 +291,25 @@ mod tests {
 
     #[test]
     fn test_pricing_overrides() {
-        let override_file = std::path::Path::new(".rtk_pricing.json");
-        let backup_exists = override_file.exists();
-        let mut backup_content = Vec::new();
-        if backup_exists {
-            backup_content = std::fs::read(override_file).unwrap_or_default();
+        let tmp = std::env::temp_dir().join(format!("rtk_pricing_test_{}", std::process::id()));
+        std::fs::create_dir_all(&tmp).unwrap();
+        let original_cwd = std::env::current_dir().unwrap();
+        std::env::set_current_dir(&tmp).unwrap();
+        let tmp_cleanup = tmp.clone();
+        struct RestoreCwd {
+            cwd: std::path::PathBuf,
+            tmp: std::path::PathBuf,
         }
+        impl Drop for RestoreCwd {
+            fn drop(&mut self) {
+                let _ = std::env::set_current_dir(&self.cwd);
+                let _ = std::fs::remove_dir_all(&self.tmp);
+            }
+        }
+        let _restore = RestoreCwd {
+            cwd: original_cwd,
+            tmp: tmp_cleanup,
+        };
 
         let override_json = serde_json::json!({
             "models": [
@@ -307,18 +320,10 @@ mod tests {
                 }
             ]
         });
-        std::fs::write(override_file, override_json.to_string()).unwrap();
+        std::fs::write(".rtk_pricing.json", override_json.to_string()).unwrap();
 
-        // Run assertions
         let price = get_merged_price("claude-4.6-sonnet").unwrap();
         assert_eq!(price.input_price_per_mtok, 1.23);
         assert_eq!(price.output_price_per_mtok, 4.56);
-
-        // Cleanup
-        if backup_exists {
-            std::fs::write(override_file, backup_content).unwrap();
-        } else {
-            let _ = std::fs::remove_file(override_file);
-        }
     }
 }

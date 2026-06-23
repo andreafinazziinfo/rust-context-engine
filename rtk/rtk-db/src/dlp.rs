@@ -160,8 +160,7 @@ fn check_and_redact_word(word: &str, source: &str) -> String {
     if word.len() >= 24 && word.len() <= 128 {
         let is_git_hash = word.len() == 40 && word.chars().all(|c| c.is_ascii_hexdigit());
 
-        let is_base64_like = word.ends_with("==") || word.ends_with('=');
-        if !is_git_hash && !is_base64_like {
+        if !is_git_hash {
             let entropy = shannon_entropy(word);
             // High entropy threshold: 4.7 bits/symbol reduces false positives on UUIDs/Base64
             if entropy > 4.7 {
@@ -239,6 +238,14 @@ mod tests {
     #[test]
     fn test_redact_high_entropy_secret() {
         let input = "secret: 8f7B2zK9wP3qR6vT1yX4mN7bV0cZ3aL9xJ2fH5dG8";
+        let output = redact(input);
+        assert!(output.contains("[REDACTED_SECRET]"));
+        assert!(!output.contains("8f7B2zK9wP3q"));
+    }
+
+    #[test]
+    fn test_redact_base64_secret_with_padding() {
+        let input = "key=8f7B2zK9wP3qR6vT1yX4mN7bV0cZ3aL9xJ2fH5dG8=";
         let output = redact(input);
         assert!(output.contains("[REDACTED_SECRET]"));
         assert!(!output.contains("8f7B2zK9wP3q"));
