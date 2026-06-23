@@ -1,5 +1,7 @@
 # RTK Context Engine — Piano migliorie verso 9+
 
+> **Archived (2026-06-23)** — Sprint S1–S5 completed at **9.0/10**. Public roadmap: [../ROADMAP.md](../ROADMAP.md).
+
 | Campo | Valore |
 |-------|--------|
 | **Repo** | `rust-context-engine` (workspace `rtk/`) |

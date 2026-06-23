@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Block push if rustfmt would change tracked Rust files.
+set -euo pipefail
+source "${HOME}/.cargo/env" 2>/dev/null || true
+root="$(git rev-parse --show-toplevel)"
+cd "$root/rtk"
+echo "pre-push: cargo fmt --check"
+cargo fmt --all -- --check

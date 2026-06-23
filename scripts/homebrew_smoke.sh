@@ -23,5 +23,21 @@ for asset in rtk-macos-arm64.tar.gz rtk-macos-amd64.tar.gz rtk-linux-amd64.tar.g
   }
 done
 
-EXPECTED="$(grep '^version' "$PKG" | head -1 | sed 's/version = "//;s/"//' | tr -d ' ')"
-echo "homebrew smoke OK (formula v$EXPECTED parity target)"
+grep -q 'PLACEHOLDER' "$FORMULA" && {
+  echo "homebrew smoke FAIL: rtk.rb still has PLACEHOLDER sha256" >&2
+  exit 1
+}
+
+grep -qE '^\s*sha256 "' "$FORMULA" || {
+  echo "homebrew smoke FAIL: no sha256 lines in rtk.rb" >&2
+  exit 1
+}
+
+PKG_VER="$(grep '^version' "$PKG" | head -1 | sed 's/version = "//;s/"//' | tr -d ' ')"
+FORMULA_VER="$(grep '^  version "' "$FORMULA" | sed 's/.*"\(.*\)".*/\1/')"
+if [ "$PKG_VER" != "$FORMULA_VER" ]; then
+  echo "homebrew smoke FAIL: Cargo.toml=$PKG_VER rtk.rb=$FORMULA_VER" >&2
+  exit 1
+fi
+
+echo "homebrew smoke OK (formula v$FORMULA_VER)"

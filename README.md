@@ -469,11 +469,14 @@ To ensure complete project portability and clean namespace isolation, RTK consol
 
 ## 🤝 Contributing
 
-Dev gate (WSL/Linux): `bash scripts/dev-gate.sh` — fmt, clippy, full workspace tests.
+```bash
+bash scripts/setup-githooks.sh   # pre-push: cargo fmt --check
+bash scripts/dev-gate.sh         # fmt + clippy + test before PR
+```
 
-Improvement roadmap and task registry: [`docs/IMPROVEMENT_PLAN_9PLUS.md`](docs/IMPROVEMENT_PLAN_9PLUS.md).
+Roadmap: [`docs/ROADMAP.md`](docs/ROADMAP.md). Sprint audit (archived): [`docs/archive/IMPROVEMENT_PLAN_9PLUS.md`](docs/archive/IMPROVEMENT_PLAN_9PLUS.md).
 
-Release checks: `bash scripts/release_smoke.sh`, `bash scripts/homebrew_smoke.sh`.
+Release checks: `bash scripts/release_smoke.sh`, `bash scripts/homebrew_smoke.sh`. Refresh Homebrew checksums after a tag: `bash scripts/update_homebrew_sha256.sh vX.Y.Z`.
 
 Version parity: workspace crates, `rtk --version`, and MCP `initialize` must match (`rtk/rtk-cli/Cargo.toml`).
 
