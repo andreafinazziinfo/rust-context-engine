@@ -4,7 +4,7 @@
 |-------|--------|
 | **Baseline** | v2.3.0 · CI verde · score qualità 9.0 |
 | **Obiettivo fase** | Adozione + uniformità filtri (non nuove feature pesanti) |
-| **Status** | ✅ Completato — piano attivo: [PLAN_CLOSURE.md](./PLAN_CLOSURE.md) |
+| **Status** | ✅ Completato (Fase A–B) — attivo: [PLAN_CLOSURE.md](./PLAN_CLOSURE.md) v2.3.1 |
 | **Aggiornato** | 2026-06-23 |
 
 Roadmap pubblica breve: [ROADMAP.md](./ROADMAP.md) · Audit completato: [archive/IMPROVEMENT_PLAN_9PLUS.md](./archive/IMPROVEMENT_PLAN_9PLUS.md)

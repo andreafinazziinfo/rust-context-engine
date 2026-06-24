@@ -16,6 +16,8 @@ Or from a [release tarball](https://github.com/andreafinazziinfo/rust-context-en
 ### Linux / WSL
 
 ```bash
+cargo install rtk-context-engine --locked
+# or from source:
 git clone https://github.com/andreafinazziinfo/rust-context-engine.git
 cd rust-context-engine
 bash install.sh
@@ -81,6 +83,7 @@ rtk mcp start
 
 ```bash
 rtk doctor          # exit 0 = OK, 1 = critical, 2 = warnings
+rtk validate        # contributors: fmt + clippy + tests (in RTK repo)
 rtk index status    # re-run `rtk index run` after large refactors (no file watcher)
 ```
 
@@ -93,13 +96,13 @@ rtk index status    # re-run `rtk index run` after large refactors (no file watc
 | Hook not rewriting | Absolute path to `hooks/rtk-rewrite.sh` in Claude settings; see README |
 | WSL vs Windows DB | Run RTK in one environment consistently; see `RTK_DB_PATH` in docs |
 
-More: [README](../README.md) · [ROADMAP.md](./ROADMAP.md) · [PLAN_NOW.md](./PLAN_NOW.md)
+More: [README](../README.md) · [ROADMAP.md](./ROADMAP.md) · [PLAN_CLOSURE.md](./PLAN_CLOSURE.md) (project status)
 
 ## Contributors
 
 ```bash
 bash scripts/setup-githooks.sh   # fmt pre-push
-bash scripts/dev-gate.sh         # before PR
+rtk validate                   # or: bash scripts/dev-gate.sh
 ```
 
 Build from source: clone under `~/dev/` on WSL (not `/mnt/c/target`) — see `docs/archive/IMPROVEMENT_PLAN_9PLUS.md` DEV-WSL notes.

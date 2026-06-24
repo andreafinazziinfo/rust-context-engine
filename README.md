@@ -25,7 +25,9 @@
 
 ---
 
-> **Quickstart (~5 min):** [docs/QUICKSTART.md](docs/QUICKSTART.md) · **User guide:** [docs/USER.md](docs/USER.md) · **macOS:** `brew tap andreafinazziinfo/rust-context-engine && brew install rtk`
+> **Quickstart (~5 min):** [docs/QUICKSTART.md](docs/QUICKSTART.md) · **User guide:** [docs/USER.md](docs/USER.md) · **Status:** [v2.3.1 shipped](https://github.com/andreafinazziinfo/rust-context-engine/releases/tag/v2.3.1) — feature-freeze until real-world feedback ([PLAN_CLOSURE](docs/PLAN_CLOSURE.md))
+
+> **Install:** `cargo install rtk-context-engine --locked` · **macOS:** `brew tap andreafinazziinfo/rust-context-engine && brew install rtk` · **Windows:** [release zip](https://github.com/andreafinazziinfo/rust-context-engine/releases/latest)
 
 **RTK (Rust Context Engine)** is a high-performance, Rust-based local runtime and context engine designed to optimize how Autonomous Agents (like Claude Code, Cursor, Windsurf, Antigravity) interact with your project codebase.
 
@@ -33,7 +35,7 @@
 Modern LLMs are incredibly smart, but they suffer from **Context Window Exhaustion & Distraction**: they fill their memory with useless terminal logs (like 1000 lines of `npm install` warnings), raw files, and long reasoning loops, causing them to slow down, hallucinate, and rack up massive API bills.
 
 ### 💡 The Solution
-RTK solves this by intercepting commands, stripping the noise, caching the raw data in a local FTS5 vector database, and returning only the pure semantic signal. By enforcing YAGNI developer behaviors and compressing outputs, the toolkit saves an **average of 82.4% of tokens** across 17 verified scenarios (ranging from 41% to 96%).
+RTK solves this by intercepting commands, stripping the noise, caching the raw data in a local FTS5 vector database, and returning only the pure semantic signal. By enforcing YAGNI developer behaviors and compressing outputs, the toolkit saves an **average of ~81% of tokens** across verified scenarios (ranging from 41% to 96%).
 
 
 ### ⚙️ Three-Phase Efficacy Pipeline
@@ -148,9 +150,9 @@ Projections are based on **1,500 commands/month** (50/day * 30 days) with an ave
 
 ---
 
-## 🛠️ Advanced Context Architecture & MCP (v2.0)
+## 🛠️ Advanced Context Architecture & MCP
 
-Version 2.0 shifts RTK from a basic CLI output filter to a comprehensive local **Context Engine**. It coordinates code indexing, semantic search, memory persistence, and tool access via a unified SQLite database and MCP.
+Version 2.x shifts RTK from a basic CLI output filter to a comprehensive local **Context Engine**. It coordinates code indexing, semantic search, memory persistence, and tool access via a unified SQLite database and MCP.
 
 ### 📐 Local Context Engine Dataflow
 
@@ -202,18 +204,22 @@ Instead of parsing files as raw text, RTK indexes your project's syntax tree usi
 *   **Minimal Token Representation**: Generates skeletal files (`rtk pack --skeleton`) showing only signatures and docstrings, stripping implementation bodies to save up to 90% of tokens.
 
 ### 2. Model Context Protocol (`rtk-mcp`)
-RTK implements a lightweight, high-performance MCP server built directly into the Rust binary. It exposes a minimal, highly optimized tool surface to AI clients:
-*   `search_code`: Perform hybrid semantic search across the codebase.
-*   `find_symbols`: Locate definitions of specific structs, traits, functions, or classes.
+RTK implements a lightweight, high-performance MCP server built directly into the Rust binary. It exposes **9 tools** to AI clients:
+*   `search_code`: Hybrid FTS / substring search across the codebase.
+*   `find_symbols`: Locate definitions of structs, traits, functions, or classes.
 *   `find_refs`: Identify references and call sites of a symbol.
 *   `project_memory`: Fetch or save project ports, configurations, and setup decisions.
-*   `context_pack`: Compact specific file trees into a tokens-stripped XML payload.
-*   `session_state`: Check or update active tasks and decisions to manage handoffs.
-*   `get_budget_status`: Retrieve the current budget spend and check limit (exposes FinOps budget status to self-regulating agents).
+*   `artifact_get`: Retrieve a cached raw CLI log by ID.
+*   `context_pack`: Compact file trees into a token-stripped XML payload.
+*   `session_state`: Check or update active tasks and decisions for handoffs.
+*   `get_budget_status`: Budget spend and limit (FinOps for self-regulating agents).
+*   `ping`: Version and connectivity check.
+
+Blast-radius analysis (`rtk impact analyze`) is available via **CLI**, not as an MCP tool.
 
 | MCP tool | Default build | Requires `--features embeddings` |
 | :--- | :---: | :---: |
-| `find_symbols`, `find_refs`, `impact_analyze` | yes (AST graph) | no |
+| `find_symbols`, `find_refs` | yes (AST graph) | no |
 | `search_code` | yes (FTS / substring) | hybrid ONNX optional |
 | `project_memory`, `session_state`, `artifact_get` | yes | no |
 | `context_pack` (`--skeleton` uses Tree-sitter) | yes | no |
@@ -250,23 +256,33 @@ The default release binary matches the **Default** column. Hybrid search require
 
 ## ⚙️ Installation & Setup
 
-1. **Requirements**: Rust toolchain (Cargo), Bash-compatible shell.
-2. **Install**:
-   - **Via Cargo (Recommended)**:
+See **[docs/QUICKSTART.md](docs/QUICKSTART.md)** for the full 5-minute path.
+
+1. **Requirements**: Bash-compatible shell for hooks/aliases; Rust toolchain only if building from source.
+2. **Install** (pick one):
+   - **crates.io** (recommended on Linux/WSL):
      ```bash
-     cargo install rtk-context-engine
+     cargo install rtk-context-engine --locked
      ```
-   - **From Source**:
+   - **Homebrew** (macOS):
+     ```bash
+     brew tap andreafinazziinfo/rust-context-engine
+     brew install rtk
+     ```
+   - **Release binary** (Windows / Linux): download from [GitHub Releases](https://github.com/andreafinazziinfo/rust-context-engine/releases/latest) (`rtk-windows-amd64.zip` or `rtk-linux-amd64.tar.gz`).
+   - **From source** (WSL dev):
      ```bash
      git clone https://github.com/andreafinazziinfo/rust-context-engine.git
      cd rust-context-engine
      bash install.sh
      ```
-3. **Initialize AI Profiles & Auto-Install** (in your workspace):
+3. **Initialize** (in your project):
    ```bash
    rtk init --profile high
+   rtk index run
+   rtk doctor
    ```
-   *Note: This automatically appends RTK aliases to your `~/.bashrc`, `~/.zshrc`, and `~/.profile`.*
+   *`init` appends RTK aliases to `~/.bashrc`, `~/.zshrc`, and `~/.profile`, and attempts PreToolUse hook setup.*
 
 <details>
 <summary><b>4. AI / IDE Integration (Click to expand)</b></summary>
@@ -317,6 +333,7 @@ alias terraform="rtk terraform"
 *   **Configuration**: `rtk config show`, `rtk config deny add "<pattern>"`, `rtk config dlp add "<regex>"`, `rtk config export` (exports global config to stdout), `rtk config import [--path <file>]` (imports/overwrites config from a file or stdin).
 *   **PR Cost Estimator**: `rtk estimate` / `rtk est` (analyzes the active `git diff` and projects token usage & estimated API costs across top model tiers, showing exact potential savings).
 *   **Telemetry, Stats & Audit**: `rtk status`, `rtk stats [--chart]` / `rtk gain [--chart]` (prints shorthand savings metrics and displays a beautiful ASCII cost trend chart), `rtk dashboard` (live Web UI), `rtk audit` (aggregates savings metrics, prints summary and writes `rtk-audit.md`), `rtk telemetry export` (exports Prometheus-compatible scraping metrics).
+*   **Quality gate** (contributors): `rtk validate` — runs `scripts/dev-gate.sh` (fmt + clippy + tests) when present in the repo.
 *   **Dynamic Plugins**: `rtk plugin -- <command>` (runs a command using custom rules from `plugins.toml`).
 
 <details>
@@ -471,9 +488,9 @@ To ensure complete project portability and clean namespace isolation, RTK consol
 
 ## 🤝 Contributing
 
-See **[docs/CONTRIBUTING.md](docs/CONTRIBUTING.md)** — dev gate, golden fixtures, release checklist, git hooks.
+See **[docs/CONTRIBUTING.md](docs/CONTRIBUTING.md)** — `rtk validate`, golden fixtures, release checklist, git hooks.
 
-Roadmap: [docs/ROADMAP.md](docs/ROADMAP.md) · Plan: [docs/PLAN_NOW.md](docs/PLAN_NOW.md)
+**Maintainers:** [docs/RELEASE.md](docs/RELEASE.md) · **Roadmap:** [docs/ROADMAP.md](docs/ROADMAP.md) · **Active plan:** [docs/PLAN_CLOSURE.md](docs/PLAN_CLOSURE.md) (Fase D: real-world use, no new features)
 
 ---
 

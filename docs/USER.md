@@ -26,6 +26,7 @@ RTK is a **local context engine** for AI coding agents. It:
 | Memory | `rtk memory set/get/search` |
 | Index | `rtk index run` · `rtk symbols find <name>` |
 | Health | `rtk doctor` |
+| Quality gate | `rtk validate` (RTK repo / projects with `scripts/dev-gate.sh`) |
 
 ## Profiles & hooks
 
@@ -52,4 +53,5 @@ Best-effort DLP, alias-based wrappers (not a sandbox), manual `rtk index run` af
 - [README](../README.md) — benchmarks, architecture diagrams, full reference
 - [cli.md](./src/cli.md) — command table
 - [installation.md](./src/installation.md) — WSL dev notes
-- [ROADMAP.md](./ROADMAP.md) — what's shipped / planned
+- [ROADMAP.md](./ROADMAP.md) — what's shipped / active plan
+- [PLAN_CLOSURE.md](./PLAN_CLOSURE.md) — v2.3.1 closure, Fase D real-world use

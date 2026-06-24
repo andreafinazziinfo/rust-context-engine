@@ -5,3 +5,4 @@
 - Dogfood: `scripts/setup-dogfood.sh`, `docs/DOGFOOD.md`
 - `docs/PLAN_CLOSURE.md` — operational closure plan
 - Homebrew formula URLs + sha256 for v2.3.1
+- crates.io: all 6 workspace crates @ 2.3.1 (`scripts/publish-crates.sh`)
