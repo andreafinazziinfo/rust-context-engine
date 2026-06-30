@@ -223,13 +223,7 @@ pub fn get_config() -> UserConfig {
 }
 
 /// Create a default config.json file in `~/.config/rtk/` if it does not already exist.
-pub fn create_default_config() -> Result<(), std::io::Error> {
-    if let Some(home) = std::env::var_os("USERPROFILE").or_else(|| std::env::var_os("HOME")) {
-        let config_dir = Path::new(&home).join(".config/rtk");
-        let config_path = config_dir.join("config.json");
-        if !config_path.exists() {
-            fs::create_dir_all(&config_dir)?;
-            let default_json = r#"{
+const DEFAULT_CONFIG_JSON: &str = r#"{
   "denied_commands": [
     "git push.*--force",
     "git reset --hard"
@@ -240,8 +234,21 @@ pub fn create_default_config() -> Result<(), std::io::Error> {
     ]
   }
 }"#;
-            fs::write(config_path, default_json)?;
+
+/// Write the default config at `path` if it does not already exist.
+fn ensure_default_config_at(path: &Path) -> Result<(), std::io::Error> {
+    if !path.exists() {
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent)?;
         }
+        fs::write(path, DEFAULT_CONFIG_JSON)?;
+    }
+    Ok(())
+}
+
+pub fn create_default_config() -> Result<(), std::io::Error> {
+    if let Some(path) = global_config_path() {
+        ensure_default_config_at(&path)?;
     }
     Ok(())
 }
@@ -256,10 +263,15 @@ fn modify_config<F>(f: F) -> anyhow::Result<()>
 where
     F: FnOnce(&mut serde_json::Map<String, serde_json::Value>),
 {
-    create_default_config().map_err(|e| anyhow::anyhow!("failed to create default config: {e}"))?;
-
+    // Resolve the path ONCE, then create + read at that exact path. Resolving
+    // via env inside create_default_config separately from here opened a race
+    // window (parallel tests mutate HOME/USERPROFILE) where create and read
+    // could target different dirs — flaky "file not found" on Windows CI.
     let path = global_config_path()
         .ok_or_else(|| anyhow::anyhow!("could not determine global config directory"))?;
+
+    ensure_default_config_at(&path)
+        .map_err(|e| anyhow::anyhow!("failed to create default config: {e}"))?;
 
     let content = fs::read_to_string(&path)
         .map_err(|e| anyhow::anyhow!("failed to read global config: {e}"))?;
