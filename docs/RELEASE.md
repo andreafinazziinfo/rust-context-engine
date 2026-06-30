@@ -1,5 +1,13 @@
 # Release checklist (maintainer)
 
+## v2.3.2 (Fase D — fixes & dependency alignment)
+
+See [CHANGELOG](../CHANGELOG.md#232---2026-06-30) · [GitHub release](https://github.com/andreafinazziinfo/rust-context-engine/releases/tag/v2.3.2)
+
+- DLP redacts generic `sk-` API keys; no SIGPIPE panic on `head`/`less`
+- tree-sitter ecosystem upgraded (core 0.24 + grammars 0.23); rusqlite 0.32, toml 1.1, tokenizers 0.23
+- CI fix: `e2e_ide_pipeline_flow` robust to detached-HEAD checkout
+
 ## v2.3.1 (Fase C)
 
 See [RELEASE_v2.3.1.md](./RELEASE_v2.3.1.md) · [GitHub release](https://github.com/andreafinazziinfo/rust-context-engine/releases/tag/v2.3.1)

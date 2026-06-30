@@ -1,6 +1,6 @@
 [package]
 name = "rtk-context-index"
-version = "2.3.1"
+version = "2.3.2"
 edition = "2021"
 description = "RTK — code graph indexing, symbols navigation, and blast radius impact analyzer"
 license = "Apache-2.0"

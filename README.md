@@ -25,7 +25,7 @@
 
 ---
 
-> **Quickstart (~5 min):** [docs/QUICKSTART.md](docs/QUICKSTART.md) · **User guide:** [docs/USER.md](docs/USER.md) · **Community:** [Discussions](https://github.com/andreafinazziinfo/rust-context-engine/discussions) · **Status:** [v2.3.1 shipped](https://github.com/andreafinazziinfo/rust-context-engine/releases/tag/v2.3.1) — feature-freeze until real-world feedback ([PLAN_CLOSURE](docs/PLAN_CLOSURE.md))
+> **Quickstart (~5 min):** [docs/QUICKSTART.md](docs/QUICKSTART.md) · **User guide:** [docs/USER.md](docs/USER.md) · **Community:** [Discussions](https://github.com/andreafinazziinfo/rust-context-engine/discussions) · **Status:** [v2.3.2 shipped](https://github.com/andreafinazziinfo/rust-context-engine/releases/tag/v2.3.2) — feature-freeze until real-world feedback ([PLAN_CLOSURE](docs/PLAN_CLOSURE.md))
 
 > **Install:** `cargo install rtk-context-engine --locked` · **macOS:** `brew tap andreafinazziinfo/rust-context-engine && brew install rtk` · **Windows:** [release zip](https://github.com/andreafinazziinfo/rust-context-engine/releases/latest)
 

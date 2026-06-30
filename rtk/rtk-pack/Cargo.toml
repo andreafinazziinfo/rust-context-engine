@@ -1,6 +1,6 @@
 [package]
 name = "rtk-context-pack"
-version = "2.3.1"
+version = "2.3.2"
 edition = "2021"
 description = "RTK — code layout packing and AST skeleton parser modules"
 license = "Apache-2.0"
@@ -15,4 +15,4 @@ tree-sitter-javascript = "0.23"
 tree-sitter-typescript = "0.23"
 tree-sitter-go = "0.23"
 tree-sitter-java = "0.23"
-rtk_db = { package = "rtk-context-db", version = "2.3.1", path = "../rtk-db" }
+rtk_db = { package = "rtk-context-db", version = "2.3.2", path = "../rtk-db" }
