@@ -74,9 +74,18 @@ fn e2e_ide_pipeline_flow() {
     assert!(run_out.status.success() || run_out.status.code() == Some(128));
     let stdout_str = String::from_utf8_lossy(&run_out.stdout);
 
-    // 3. Verify output contains standard RTK wrappers or git output
+    // 3. Verify output contains standard RTK wrappers or git output.
+    // Phrasing varies by git version and checkout state — notably CI checks out
+    // in detached HEAD ("HEAD detached at <sha>"), so also accept HEAD/clean/commit.
     assert!(
-        stdout_str.contains("git") || stdout_str.contains("RTK") || stdout_str.contains("branch")
+        stdout_str.contains("git")
+            || stdout_str.contains("RTK")
+            || stdout_str.contains("branch")
+            || stdout_str.contains("HEAD")
+            || stdout_str.contains("detached")
+            || stdout_str.contains("clean")
+            || stdout_str.contains("commit"),
+        "unexpected rtk git status output: {stdout_str:?}"
     );
 
     // We can also verify that a local SQLite DB was hit, but since
