@@ -177,6 +177,10 @@ fn auto_rewrite(cmd: &str) -> Option<String> {
             "plan" | "apply" => Some(cmd.replacen("terraform", "rtk terraform", 1)),
             _ => None,
         },
+        "ruff" if words.len() >= 2 => match words[1] {
+            "check" => Some(cmd.replacen("ruff", "rtk ruff", 1)),
+            _ => None,
+        },
         "pytest" => Some(cmd.replacen("pytest", "rtk pytest", 1)),
         "ls" => Some(cmd.replacen("ls", "rtk ls", 1)),
         "gradle" | "./gradlew" | "gradlew" => Some(cmd.replacen(words[0], "rtk gradle", 1)),

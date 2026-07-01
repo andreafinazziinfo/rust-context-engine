@@ -70,6 +70,11 @@ pub(crate) enum Commands {
         #[arg(trailing_var_arg = true)]
         args: Vec<String>,
     },
+    /// Run a ruff invocation with filtered output
+    Ruff {
+        #[arg(trailing_var_arg = true)]
+        args: Vec<String>,
+    },
     /// Run ls with filtered output
     Ls {
         #[arg(trailing_var_arg = true)]

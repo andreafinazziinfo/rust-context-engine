@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use rtk_db::{config, session, status, think, tracking};
 use rtk_filters::{
     cargo_build, cargo_test, docker_filter, git_branch, git_diff, git_log, git_show, git_status,
-    go_test, gradle, ls_filter, npm_filter, pytest_filter,
+    go_test, gradle, ls_filter, npm_filter, pytest_filter, ruff_filter,
 };
 use rtk_pack::pack;
 
@@ -60,6 +60,16 @@ pub fn dispatch(command: Commands) -> Result<()> {
         },
         Commands::Think { content } => think::run(content),
         Commands::Pytest { args } => run_filtered("pytest", &args, pytest_filter::filter),
+        Commands::Ruff { args } => {
+            // Only `ruff check` emits the diagnostic format we compress; pass
+            // through `format`, `rule`, `--version`, etc. unchanged.
+            let subcmd = args.first().map(|s| s.as_str()).unwrap_or("");
+            if subcmd == "check" {
+                run_filtered("ruff", &args, ruff_filter::filter)
+            } else {
+                passthrough("ruff", &args)
+            }
+        }
         Commands::Ls { args } => run_filtered("ls", &args, ls_filter::filter),
         Commands::Gradle { args } => run_filtered(&get_gradle_bin(), &args, gradle::filter),
         Commands::GoTest { args } => {

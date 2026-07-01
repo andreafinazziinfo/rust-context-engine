@@ -1,0 +1,120 @@
+warning: `incorrect-blank-line-before-class` (D203) and `no-blank-line-before-class` (D211) are incompatible. Ignoring `incorrect-blank-line-before-class`.
+warning: `multi-line-summary-first-line` (D212) and `multi-line-summary-second-line` (D213) are incompatible. Ignoring `multi-line-summary-second-line`.
+D100 Missing docstring in public module
+--> backend/app/api/health.py:1:1
+
+D103 Missing docstring in public function
+ --> backend/app/api/health.py:7:11
+  |
+6 | @router.get("/health")
+7 | async def health() -> dict:
+  |           ^^^^^^
+8 |     return {"status": "ok", "service": "cyclelab-backend"}
+  |
+
+D101 Missing docstring in public class
+  --> backend/app/api/matassa/ingestion.py:18:7
+   |
+18 | class CacheRefreshBody(BaseModel):
+   |       ^^^^^^^^^^^^^^^^
+19 |     symbols: list[str] | None = None
+20 |     timeframes: list[str] | None = None
+   |
+
+ARG001 Unused function argument: `request`
+  --> backend/app/api/matassa/ingestion.py:27:24
+   |
+25 | @router.post("/cache/refresh")
+26 | @limiter.limit("10/minute")
+27 | def post_cache_refresh(request: Request, body: CacheRefreshBody | None = None) -> dict[str, Any]:
+   |                        ^^^^^^^
+28 |     """Run OHLCV refresh for catalog pairs (same role as fin-server POST cache refresh)."""
+29 |     b = body or CacheRefreshBody()
+   |
+
+D103 Missing docstring in public function
+  --> backend/app/api/matassa/ingestion.py:40:5
+   |
+39 | @router.get("/ingestion/runs")
+40 | def get_ingestion_runs(limit: int = Query(50, ge=1, le=200)) -> dict[str, Any]:
+   |     ^^^^^^^^^^^^^^^^^^
+41 |     q = text(
+42 |         """
+   |
+
+FAST002 FastAPI dependency without `Annotated`
+  --> backend/app/api/matassa/ingestion.py:40:24
+   |
+39 | @router.get("/ingestion/runs")
+40 | def get_ingestion_runs(limit: int = Query(50, ge=1, le=200)) -> dict[str, Any]:
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+41 |     q = text(
+42 |         """
+   |
+help: Replace with `typing.Annotated`
+
+COM812 [*] Trailing comma missing
+  --> backend/app/api/matassa/ingestion.py:47:12
+   |
+45 |         ORDER BY finished_at DESC NULLS LAST
+46 |         LIMIT :lim
+47 |         """
+   |            ^
+48 |     )
+49 |     with get_engine().connect() as conn:
+   |
+help: Add trailing comma
+
+D104 Missing docstring in public package
+--> backend/app/api/v1/__init__.py:1:1
+
+D101 Missing docstring in public class
+  --> backend/app/api/v1/auth.py:24:7
+   |
+24 | class LoginRequest(BaseModel):
+   |       ^^^^^^^^^^^^
+25 |     username: str = Field(..., min_length=1, max_length=128)
+26 |     password: str = Field(..., min_length=1, max_length=256)
+   |
+
+D101 Missing docstring in public class
+  --> backend/app/api/v1/auth.py:29:7
+   |
+29 | class TokenResponse(BaseModel):
+   |       ^^^^^^^^^^^^^
+30 |     access_token: str
+31 |     token_type: str = "bearer"
+   |
+
+S105 Possible hardcoded password assigned to: "token_type"
+  --> backend/app/api/v1/auth.py:31:23
+   |
+29 | class TokenResponse(BaseModel):
+30 |     access_token: str
+31 |     token_type: str = "bearer"
+   |                       ^^^^^^^^
+32 |     # None when Redis is unavailable at login (refresh flow degraded, login still works).
+33 |     refresh_token: str | None = None
+   |
+
+D101 Missing docstring in public class
+  --> backend/app/api/v1/auth.py:36:7
+   |
+36 | class RefreshRequest(BaseModel):
+   |       ^^^^^^^^^^^^^^
+37 |     refresh_token: str = Field(..., min_length=1)
+   |
+
+ARG001 Unused function argument: `request`
+  --> backend/app/api/v1/auth.py:62:17
+   |
+60 | @limiter.limit("10/minute")
+61 | @router.post("/login", response_model=TokenResponse)
+62 | async def login(request: Request, body: LoginRequest) -> TokenResponse:
+   |                 ^^^^^^^
+63 |     """Exchange credentials for a JWT. Disabled until AUTH_PASSWORD and JWT_SECRET_KEY are set."""
+64 |     if not _login_allowed():
+   |
+
+Found 118 errors.
+[*] 47 fixable with the `--fix` option.
