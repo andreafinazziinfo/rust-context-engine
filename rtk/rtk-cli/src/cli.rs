@@ -85,6 +85,11 @@ pub(crate) enum Commands {
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         args: Vec<String>,
     },
+    /// Run an eslint invocation with filtered output
+    Eslint {
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+        args: Vec<String>,
+    },
     /// Run ls with filtered output
     Ls {
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]

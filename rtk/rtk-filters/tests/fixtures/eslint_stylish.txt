@@ -1,0 +1,26 @@
+
+src1.js
+  1:7   error    'unused' is assigned a value but never used  no-unused-vars
+  1:18  error    Missing semicolon                            semi
+  2:16  error    Missing semicolon                            semi
+  4:9   error    Expected '===' and instead saw '=='          eqeqeq
+  4:24  error    Missing semicolon                            semi
+  5:3   warning  Unexpected console statement                 no-console
+  5:3   error    'console' is not defined                     no-undef
+  5:17  error    Missing semicolon                            semi
+  7:6   error    Missing semicolon                            semi
+  8:1   error    'module' is not defined                      no-undef
+  8:19  error    Missing semicolon                            semi
+
+src2.js
+  1:14  error  Missing semicolon                          semi
+  2:25  error  Missing semicolon                          semi
+  3:7   error  'dead' is assigned a value but never used  no-unused-vars
+  3:14  error  'compute' is not defined                   no-undef
+  3:23  error  Missing semicolon                          semi
+  4:11  error  Expected '!==' and instead saw '!='        eqeqeq
+  4:22  error  Missing semicolon                          semi
+
+✖ 18 problems (17 errors, 1 warning)
+  10 errors and 0 warnings potentially fixable with the `--fix` option.
+
