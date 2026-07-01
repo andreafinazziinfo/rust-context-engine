@@ -182,6 +182,10 @@ fn auto_rewrite(cmd: &str) -> Option<String> {
             _ => None,
         },
         "mypy" if words.len() >= 2 => Some(cmd.replacen("mypy", "rtk mypy", 1)),
+        "pip" | "pip3" if words.len() >= 2 => match words[1] {
+            "install" => Some(cmd.replacen(words[0], "rtk pip", 1)),
+            _ => None,
+        },
         "pytest" => Some(cmd.replacen("pytest", "rtk pytest", 1)),
         "ls" => Some(cmd.replacen("ls", "rtk ls", 1)),
         "gradle" | "./gradlew" | "gradlew" => Some(cmd.replacen(words[0], "rtk gradle", 1)),
@@ -241,6 +245,20 @@ mod tests {
     #[test]
     fn test_no_match_returns_none() {
         assert_eq!(auto_rewrite("python manage.py runserver"), None);
+    }
+
+    #[test]
+    fn test_pip_install_rewrite() {
+        assert_eq!(
+            auto_rewrite("pip install -r requirements.txt"),
+            Some("rtk pip install -r requirements.txt".into())
+        );
+        assert_eq!(
+            auto_rewrite("pip3 install requests"),
+            Some("rtk pip install requests".into())
+        );
+        // Non-install pip subcommands are not rewritten.
+        assert_eq!(auto_rewrite("pip list"), None);
     }
 
     #[test]

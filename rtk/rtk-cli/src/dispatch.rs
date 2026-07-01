@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use rtk_db::{config, session, status, think, tracking};
 use rtk_filters::{
     cargo_build, cargo_test, docker_filter, git_branch, git_diff, git_log, git_show, git_status,
-    go_test, gradle, ls_filter, mypy_filter, npm_filter, pytest_filter, ruff_filter,
+    go_test, gradle, ls_filter, mypy_filter, npm_filter, pip_filter, pytest_filter, ruff_filter,
 };
 use rtk_pack::pack;
 
@@ -71,6 +71,16 @@ pub fn dispatch(command: Commands) -> Result<()> {
             }
         }
         Commands::Mypy { args } => run_filtered("mypy", &args, mypy_filter::filter),
+        Commands::Pip { args } => {
+            // Only `pip install` is verbose enough to filter; pass through
+            // list/show/freeze/uninstall/etc. unchanged.
+            let subcmd = args.first().map(|s| s.as_str()).unwrap_or("");
+            if subcmd == "install" {
+                run_filtered("pip", &args, pip_filter::filter)
+            } else {
+                passthrough("pip", &args)
+            }
+        }
         Commands::Ls { args } => run_filtered("ls", &args, ls_filter::filter),
         Commands::Gradle { args } => run_filtered(&get_gradle_bin(), &args, gradle::filter),
         Commands::GoTest { args } => {

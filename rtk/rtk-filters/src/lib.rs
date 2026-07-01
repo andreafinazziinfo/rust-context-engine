@@ -11,5 +11,6 @@ pub mod gradle;
 pub mod ls_filter;
 pub mod mypy_filter;
 pub mod npm_filter;
+pub mod pip_filter;
 pub mod pytest_filter;
 pub mod ruff_filter;
