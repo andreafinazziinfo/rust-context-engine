@@ -1,0 +1,54 @@
+
+ RUN  v2.1.9 /project
+
+ ❯ sum.test.js (5 tests | 2 failed) 34ms
+   × add > fails on wrong 21ms
+     → expected 4 to be 5 // Object.is equality
+   × strings > length 3ms
+     → expected 5 to be 4 // Object.is equality
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  sum.test.js > add > fails on wrong
+AssertionError: expected 4 to be 5 // Object.is equality
+
+- Expected
++ Received
+
+- 5
++ 4
+
+ ❯ sum.test.js:6:50
+      4|   it('adds positives', () => { expect(add(2, 3)).toBe(5) })
+      5|   it('adds zero', () => { expect(add(5, 0)).toBe(5) })
+      6|   it('fails on wrong', () => { expect(add(2, 2)).toBe(5) })
+       |                                                  ^
+      7| })
+      8| describe('strings', () => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  sum.test.js > strings > length
+AssertionError: expected 5 to be 4 // Object.is equality
+
+- Expected
++ Received
+
+- 4
++ 5
+
+ ❯ sum.test.js:10:47
+      8| describe('strings', () => {
+      9|   it('concats', () => { expect('a' + 'b').toBe('ab') })
+     10|   it('length', () => { expect('hello'.length).toBe(4) })
+       |                                               ^
+     11| })
+     12| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 3 passed (5)
+   Start at  19:58:47
+   Duration  1.03s (transform 66ms, setup 0ms, collect 38ms, tests 34ms, environment 1ms, prepare 215ms)
+

@@ -15,3 +15,5 @@ pub mod npm_filter;
 pub mod pip_filter;
 pub mod pytest_filter;
 pub mod ruff_filter;
+pub mod tsc_filter;
+pub mod vitest_filter;

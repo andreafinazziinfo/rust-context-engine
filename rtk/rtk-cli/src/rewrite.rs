@@ -188,6 +188,8 @@ fn auto_rewrite(cmd: &str) -> Option<String> {
         },
         "pytest" => Some(cmd.replacen("pytest", "rtk pytest", 1)),
         "eslint" => Some(cmd.replacen("eslint", "rtk eslint", 1)),
+        "tsc" => Some(cmd.replacen("tsc", "rtk tsc", 1)),
+        "vitest" if words.get(1) != Some(&"watch") => Some(cmd.replacen("vitest", "rtk vitest", 1)),
         "ls" => Some(cmd.replacen("ls", "rtk ls", 1)),
         "gradle" | "./gradlew" | "gradlew" => Some(cmd.replacen(words[0], "rtk gradle", 1)),
         _ => None,
