@@ -120,7 +120,7 @@ Se decidi di importare le funzionalità di RTK all'interno di altri tuoi applica
 
 | Pacchetto | Scopo |
 | :--- | :--- |
-| **`rtk-context-filters`** | Filtri regex e compressione di output standard (`cargo`, `git`, `pytest`, `docker`). |
+| **`rtk-context-filters`** | Filtri regex e compressione di output standard (`cargo`, `git`, `pytest`, `ruff`, `mypy`, `pip`, `docker`). |
 | **`rtk-context-db`** | Database SQLite FTS5 locale, telemetria, storage dei log e motore DLP. |
 | **`rtk-context-index`** | Analizzatore del grafo del codice, navigatore simboli e blast-radius. |
 | **`rtk-context-pack`** | Modulo per comprimere e impacchettare codebase usando parser AST `tree-sitter`. |

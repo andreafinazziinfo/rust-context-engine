@@ -403,6 +403,113 @@ def mock_pytest_filtered(n_tests: int = 30) -> str:
     lines.append(f"========================= 1 failed, {n_tests-1} passed, 8 warnings in 3.45s ============")
     return "\n".join(lines)
 
+def _py_symbols():
+    return [
+        ("os", "mod_a.py", 1, 8, "F401", "`os` imported but unused", True),
+        ("sys", "mod_a.py", 2, 8, "F401", "`sys` imported but unused", True),
+        ("json", "mod_a.py", 3, 8, "F401", "`json` imported but unused", True),
+        ("unused_var", "mod_a.py", 7, 5, "F841",
+         "Local variable `unused_var` is assigned to but never used", True),
+        ("l", "mod_a.py", 14, 9, "E741", "Ambiguous variable name: `l`", False),
+        ("re", "mod_b.py", 2, 8, "F401", "`re` imported but unused", True),
+        ("x", "mod_b.py", 9, 1, "E225", "Missing whitespace around operator", True),
+        ("parse", "mod_b.py", 5, 1, "ANN201",
+         "Missing return type annotation for public function `parse`", False),
+        ("Config", "svc.py", 18, 7, "D101", "Missing docstring in public class", False),
+        ("run", "svc.py", 40, 5, "D103", "Missing docstring in public function", False),
+        ("password", "auth.py", 31, 23, "S105",
+         "Possible hardcoded password assigned to: \"token_type\"", False),
+        ("total", "svc.py", 47, 12, "COM812", "Trailing comma missing", True),
+    ]
+
+def mock_ruff(n: int = 12) -> str:
+    """Generate realistic `ruff check` (full/pretty) output."""
+    lines = []
+    for name, f, ln, col, code, msg, fixable in _py_symbols()[:n]:
+        star = " [*]" if fixable else ""
+        lines.append(f"{code}{star} {msg}")
+        lines.append(f" --> {f}:{ln}:{col}")
+        lines.append("  |")
+        lines.append(f"{ln} |     {name} = ...")
+        lines.append(f"  |     {'^' * len(name)}")
+        lines.append("  |")
+        if fixable:
+            lines.append(f"help: Fix {code} on `{name}`")
+        lines.append("")
+    fixable_n = sum(1 for s in _py_symbols()[:n] if s[6])
+    lines.append(f"Found {n} errors.")
+    lines.append(f"[*] {fixable_n} fixable with the `--fix` option.")
+    return "\n".join(lines)
+
+def mock_ruff_filtered(n: int = 12) -> str:
+    """Expected collapsed output (one line per violation)."""
+    lines = []
+    for _name, f, ln, col, code, msg, fixable in _py_symbols()[:n]:
+        star = " [*]" if fixable else ""
+        lines.append(f"{f}:{ln}:{col}: {code}{star} {msg}")
+    fixable_n = sum(1 for s in _py_symbols()[:n] if s[6])
+    lines.append(f"Found {n} errors.")
+    lines.append(f"[*] {fixable_n} fixable with the `--fix` option.")
+    return "\n".join(lines)
+
+def mock_mypy(n: int = 10) -> str:
+    """Generate realistic `mypy --pretty` output (message + code-frame)."""
+    lines = []
+    for name, f, ln, col, _code, msg, _fix in _py_symbols()[:n]:
+        lines.append(f"{f}:{ln}: error: {msg}  [misc]")
+        lines.append(f"        {name} = compute({name})")
+        lines.append(f"        {' ' * 0}{'^' * (len(name) + 10)}")
+    lines.append(f"Found {n} errors in 3 files (checked 3 source files)")
+    return "\n".join(lines)
+
+def mock_mypy_filtered(n: int = 10) -> str:
+    """Expected collapsed output (one line per diagnostic, no frames)."""
+    lines = []
+    for _name, f, ln, _col, _code, msg, _fix in _py_symbols()[:n]:
+        lines.append(f"{f}:{ln}: error: {msg}  [misc]")
+    lines.append(f"Found {n} errors in 3 files (checked 3 source files)")
+    return "\n".join(lines)
+
+def mock_pip_install(n_new: int = 8, n_satisfied: int = 15) -> str:
+    """Generate realistic verbose `pip install` output."""
+    pkgs = ["flask", "werkzeug", "jinja2", "click", "blinker", "itsdangerous",
+            "markupsafe", "anyio", "httpx", "httpcore", "h11", "typing_extensions",
+            "requests", "urllib3", "certifi", "idna", "charset_normalizer",
+            "rich", "pygments", "markdown-it-py", "mdurl", "sniffio", "attrs"]
+    lines = []
+    for i in range(n_satisfied):
+        p = pkgs[i % len(pkgs)]
+        lines.append(
+            f"Requirement already satisfied: {p} in /venv/lib/python3.12/site-packages ({i}.{i}.{i})"
+        )
+    installed = []
+    for i in range(n_new):
+        p = pkgs[i % len(pkgs)]
+        installed.append(f"{p}-{i+1}.0.0")
+        lines.append(f"Collecting {p}")
+        lines.append(f"  Downloading {p}-{i+1}.0.0-py3-none-any.whl.metadata (3.2 kB)")
+    for i in range(n_new):
+        p = pkgs[i % len(pkgs)]
+        lines.append(f"Downloading {p}-{i+1}.0.0-py3-none-any.whl ({100+i*13} kB)")
+        lines.append(f"   ━━━━━━━━━━━━━━━━━━━━━━ {100+i*13}.0/{100+i*13}.0 kB 2.1 MB/s eta 0:00:00")
+    lines.append("Installing collected packages: " + ", ".join(p.split("-")[0] for p in installed))
+    lines.append("Successfully installed " + " ".join(installed))
+    return "\n".join(lines)
+
+def mock_pip_install_filtered(n_new: int = 8, n_satisfied: int = 15) -> str:
+    """Expected filtered output (satisfied collapsed, only result kept)."""
+    pkgs = ["flask", "werkzeug", "jinja2", "click", "blinker", "itsdangerous",
+            "markupsafe", "anyio", "httpx", "httpcore", "h11", "typing_extensions",
+            "requests", "urllib3", "certifi", "idna", "charset_normalizer",
+            "rich", "pygments", "markdown-it-py", "mdurl", "sniffio", "attrs"]
+    installed = [f"{pkgs[i % len(pkgs)]}-{i+1}.0.0" for i in range(n_new)]
+    unit = "requirement" if n_satisfied == 1 else "requirements"
+    lines = [
+        f"[{n_satisfied} {unit} already satisfied]",
+        "Successfully installed " + " ".join(installed),
+    ]
+    return "\n".join(lines)
+
 def mock_docker_build() -> str:
     """Generate realistic docker build output."""
     layers = [
@@ -876,6 +983,20 @@ def run_all_benchmarks() -> list:
     results.append(r)
     print(f"         {r.std_tokens} → {r.rtk_tokens} tokens ({r.savings_pct:.1f}% saved)")
 
+    # 8b. Ruff check (12 violations, pretty)
+    print("  [8b] ruff check (12 violations, simulated)...")
+    r = benchmark_simulated("ruff check (12 violations)", "Input", "Python",
+                            mock_ruff(12), mock_ruff_filtered(12))
+    results.append(r)
+    print(f"         {r.std_tokens} → {r.rtk_tokens} tokens ({r.savings_pct:.1f}% saved)")
+
+    # 8c. Mypy (10 diagnostics, pretty)
+    print("  [8c] mypy --pretty (10 diagnostics, simulated)...")
+    r = benchmark_simulated("mypy --pretty (10 errors)", "Input", "Python",
+                            mock_mypy(10), mock_mypy_filtered(10))
+    results.append(r)
+    print(f"         {r.std_tokens} → {r.rtk_tokens} tokens ({r.savings_pct:.1f}% saved)")
+
     # 9. Docker Build (8 layers)
     print("  [9/15] docker build (8 layers, simulated)...")
     r = benchmark_simulated("docker build (8 layers)", "Input", "Docker",
@@ -908,6 +1029,13 @@ def run_all_benchmarks() -> list:
     print("  [13/15] npm install (40 packages, simulated)...")
     r = benchmark_simulated("npm install (40 packages)", "Input", "Node.js",
                             mock_npm_install(), mock_npm_filtered())
+    results.append(r)
+    print(f"         {r.std_tokens} → {r.rtk_tokens} tokens ({r.savings_pct:.1f}% saved)")
+
+    # 13b. pip install (8 new + 15 satisfied)
+    print("  [13b] pip install (8 new, 15 satisfied, simulated)...")
+    r = benchmark_simulated("pip install (8 new, 15 cached)", "Input", "Python",
+                            mock_pip_install(8, 15), mock_pip_install_filtered(8, 15))
     results.append(r)
     print(f"         {r.std_tokens} → {r.rtk_tokens} tokens ({r.savings_pct:.1f}% saved)")
 
@@ -1051,5 +1179,6 @@ def generate_report(results: list):
 # ============================================================================
 
 if __name__ == "__main__":
-    avg_pct, total_saved = generate_report(run_all_benchmarks())
-    print(f"\n🏆 RTK delivers an average of {avg_pct:.1f}% token savings across {17} real-world scenarios.")
+    all_results = run_all_benchmarks()
+    avg_pct, total_saved = generate_report(all_results)
+    print(f"\n🏆 RTK delivers an average of {avg_pct:.1f}% token savings across {len(all_results)} real-world scenarios.")

@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+*   `rtk ruff check` — collapses ruff's verbose "full"/pretty output (code-frames + `help:` hints) to one `file:line:col: CODE message` line per violation. ~53% token savings.
+*   `rtk mypy` — collapses `mypy --pretty` code-frames and re-joins wrapped messages into clean single-line diagnostics (notes preserved). ~39% token savings.
+*   `rtk pip install` — drops resolver noise (Collecting/Downloading/progress) and collapses `Requirement already satisfied` lines into one count, keeping only `Successfully installed` and errors. ~94% token savings.
+
+### Fixed
+*   Wrapped commands now forward leading flags: `rtk pytest --tb=short` (and every other wrapper) no longer errors on a leading `--flag`. Previously the rewrite hook could turn a valid command into a broken one.
+*   `rtk dotnet` no longer panics when the `dotnet` binary is missing; it falls back gracefully.
+*   `rtk setup` no longer panics on a non-standard `settings.json` (JSON manipulation hardened against malformed input).
+*   Eliminated a Windows-only flaky test (`config`/`pricing` tests raced on process-global `HOME`/`USERPROFILE`; now serialized on a shared lock).
+
+### Dependencies
+*   Bumped `anyhow` 1.0.102 → 1.0.103 (clears RUSTSEC-2026-0190).
+
 ## [2.3.2] - 2026-06-30
 
 ### Fixed
