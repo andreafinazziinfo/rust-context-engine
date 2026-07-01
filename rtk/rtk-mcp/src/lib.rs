@@ -149,6 +149,29 @@ fn handle_request(req: &JsonRpcRequest) -> Option<JsonRpcResponse> {
     }
 }
 
+fn render_flow(children: &[rtk_index::graph::FlowNode], prefix: &str, out: &mut String) {
+    let last = children.len().saturating_sub(1);
+    for (i, child) in children.iter().enumerate() {
+        let is_last = i == last;
+        let branch = if is_last { "└─ " } else { "├─ " };
+        out.push_str(&format!(
+            "{}{}{} ({}:{}){}\n",
+            prefix,
+            branch,
+            child.name,
+            child.file_path,
+            child.line_start,
+            if child.truncated && child.children.is_empty() {
+                " …"
+            } else {
+                ""
+            }
+        ));
+        let child_prefix = format!("{}{}", prefix, if is_last { "   " } else { "│  " });
+        render_flow(&child.children, &child_prefix, out);
+    }
+}
+
 fn get_tools_list() -> serde_json::Value {
     json!([
         {
@@ -226,6 +249,18 @@ fn get_tools_list() -> serde_json::Value {
                     "apply": { "type": "boolean", "description": "Write changes (default false = preview)" }
                 },
                 "required": ["old_name", "new_name"]
+            }
+        },
+        {
+            "name": "trace_flow",
+            "description": "Trace the downstream execution flow (call tree) from an entry symbol: what it calls, transitively, as an indented tree. Answers 'how does X work?'.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "symbol": { "type": "string", "description": "Entry symbol name" },
+                    "depth": { "type": "integer", "description": "Max call depth (default 6)" }
+                },
+                "required": ["symbol"]
             }
         },
         {
@@ -512,6 +547,50 @@ pub fn execute_tool(name: &str, args: serde_json::Value) -> Result<serde_json::V
                     t.push_str("Set apply=true to write these changes.");
                 }
                 t
+            };
+            Ok(json!({
+                "content": [{
+                    "type": "text",
+                    "text": text
+                }]
+            }))
+        }
+        "trace_flow" => {
+            let symbol = args
+                .get("symbol")
+                .and_then(|s| s.as_str())
+                .ok_or_else(|| anyhow!("Missing symbol"))?;
+            let depth = args
+                .get("depth")
+                .and_then(|d| d.as_u64())
+                .map(|d| d as usize)
+                .unwrap_or(6);
+            let text = match rtk_index::trace_flow(symbol, depth, 200)? {
+                None => format!("Symbol not indexed: '{}'", symbol),
+                Some(trace) => {
+                    let mut t = format!(
+                        "Flow: {} ({}:{})\n",
+                        trace.root.name, trace.root.file_path, trace.root.line_start
+                    );
+                    render_flow(&trace.root.children, "", &mut t);
+                    t.push_str(&format!(
+                        "[{} node(s), max depth {}{}{}{}]",
+                        trace.node_count,
+                        trace.max_depth_reached,
+                        if trace.revisits > 0 {
+                            format!(", {} shared/cyclic", trace.revisits)
+                        } else {
+                            String::new()
+                        },
+                        if trace.ambiguous_hidden > 0 {
+                            format!(", {} ambiguous hidden", trace.ambiguous_hidden)
+                        } else {
+                            String::new()
+                        },
+                        if trace.capped { ", node cap hit" } else { "" }
+                    ));
+                    t
+                }
             };
             Ok(json!({
                 "content": [{
@@ -957,11 +1036,12 @@ mod tests {
         let resp = handle_request(&req).expect("tools/list response");
         let result = resp.result.unwrap();
         let tools = result["tools"].as_array().unwrap();
-        assert_eq!(tools.len(), 12);
+        assert_eq!(tools.len(), 13);
         let names: Vec<&str> = tools.iter().filter_map(|t| t["name"].as_str()).collect();
         assert!(names.contains(&"analyze_impact"));
         assert!(names.contains(&"detect_changes"));
         assert!(names.contains(&"rename_symbol"));
+        assert!(names.contains(&"trace_flow"));
     }
 
     #[test]

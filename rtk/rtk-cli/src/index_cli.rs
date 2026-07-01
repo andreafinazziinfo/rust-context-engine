@@ -91,6 +91,58 @@ pub fn impact_analyze(symbol: &str) -> Result<()> {
     Ok(())
 }
 
+pub fn flow(entry: &str, depth: usize) -> Result<()> {
+    const MAX_NODES: usize = 200;
+    let trace = rtk_index::trace_flow(entry, depth, MAX_NODES)?;
+    let Some(trace) = trace else {
+        println!("Symbol not indexed: '{}'", entry);
+        return Ok(());
+    };
+
+    println!(
+        "Flow: {} ({}:{})",
+        trace.root.name, trace.root.file_path, trace.root.line_start
+    );
+    print_flow_children(&trace.root.children, "");
+    let mut notes = format!(
+        "[{} node(s) · max depth {}",
+        trace.node_count, trace.max_depth_reached
+    );
+    if trace.revisits > 0 {
+        notes.push_str(&format!(" · {} shared/cyclic ref(s)", trace.revisits));
+    }
+    if trace.ambiguous_hidden > 0 {
+        notes.push_str(&format!(
+            " · {} ambiguous callee(s) hidden",
+            trace.ambiguous_hidden
+        ));
+    }
+    if trace.capped {
+        notes.push_str(" · node cap hit");
+    }
+    notes.push(']');
+    println!("{}", notes);
+    Ok(())
+}
+
+fn print_flow_children(children: &[rtk_index::graph::FlowNode], prefix: &str) {
+    let last = children.len().saturating_sub(1);
+    for (i, child) in children.iter().enumerate() {
+        let is_last = i == last;
+        let branch = if is_last { "└─ " } else { "├─ " };
+        let mut label = format!(
+            "{}{}{} ({}:{})",
+            prefix, branch, child.name, child.file_path, child.line_start
+        );
+        if child.truncated && child.children.is_empty() {
+            label.push_str(" …");
+        }
+        println!("{}", label);
+        let child_prefix = format!("{}{}", prefix, if is_last { "   " } else { "│  " });
+        print_flow_children(&child.children, &child_prefix);
+    }
+}
+
 pub fn rename(old_name: &str, new_name: &str, apply: bool) -> Result<()> {
     let plan = rtk_index::rename_symbol(old_name, new_name, apply)?;
     if plan.total_sites == 0 {

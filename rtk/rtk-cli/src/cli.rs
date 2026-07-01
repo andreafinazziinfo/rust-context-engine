@@ -172,6 +172,14 @@ pub(crate) enum Commands {
         #[arg(long)]
         apply: bool,
     },
+    /// Trace the downstream execution flow (call tree) from a symbol
+    Flow {
+        /// Entry symbol name
+        symbol: String,
+        /// Maximum call depth to trace
+        #[arg(long, default_value_t = 6)]
+        depth: usize,
+    },
     /// Print token savings statistics
     Stats {
         /// Show text-based ASCII cost trend chart

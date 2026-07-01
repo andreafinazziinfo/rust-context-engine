@@ -508,6 +508,28 @@ pub fn query_hybrid(
     Ok(results)
 }
 
+/// Trace the downstream execution flow (call tree) from a named entry symbol.
+/// Returns `None` if the name is not indexed. When several symbols share the
+/// name the first match is used. Bounded by `max_depth` and `max_nodes`.
+pub fn trace_flow(
+    entry_name: &str,
+    max_depth: usize,
+    max_nodes: usize,
+) -> Result<Option<graph::FlowTrace>> {
+    ensure_fresh_cwd()?;
+    let conn = db::open_db()?;
+    let all_syms = db::get_all_symbols(&conn)?;
+    let all_deps = db::get_all_dependencies(&conn)?;
+
+    let entry_id = match all_syms.iter().find(|s| s.name == entry_name) {
+        Some(s) => s.id.clone(),
+        None => return Ok(None),
+    };
+
+    let g = graph::ImpactGraph::build(all_syms, all_deps);
+    Ok(g.trace_flow(&entry_id, max_depth, max_nodes))
+}
+
 /// Per-file result of a rename operation.
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct RenameFile {

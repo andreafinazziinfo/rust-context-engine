@@ -245,6 +245,7 @@ pub fn dispatch(command: Commands) -> Result<()> {
             new_name,
             apply,
         } => index_cli::rename(&old_name, &new_name, apply),
+        Commands::Flow { symbol, depth } => index_cli::flow(&symbol, depth),
         Commands::Stats { chart } => tracking::print_stats_with_chart(chart),
         Commands::Gain { chart } => tracking::print_stats_with_chart(chart),
         Commands::Audit { subcmd, output } => match subcmd {
