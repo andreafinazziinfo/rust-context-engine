@@ -19,7 +19,7 @@ rtk config show
 
 | Variable | Purpose |
 |----------|---------|
-| `RTK_DB_PATH` | Global tracking DB (command logs, stats) |
+| `RTK_DB_PATH` | Global tracking DB (command logs, stats); read by [claude-statusline-pro](https://github.com/andreafinazziinfo/claude-statusline-pro) `💾` indicator when set in its `config.sh` |
 | `RTK_PROJECT_DB_PATH` | Project-local DB (memory, session) override |
 | `RTK_INDEX_DB_PATH` | Code index SQLite path override |
 
