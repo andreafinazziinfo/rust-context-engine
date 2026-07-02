@@ -2,7 +2,7 @@
 
 ```bash
 source scripts/rtk-dev.env.sh
-rtk --version          # 2.3.x from target/debug
+rtk --version          # 2.4.x from target/debug
 rtk git status
 rtk cargo test --manifest-path rtk/Cargo.toml -p rtk-context-filters
 rtk validate           # same as scripts/dev-gate.sh
@@ -24,6 +24,15 @@ Creates/updates `.cursor/rules/`, runs `index run`, `doctor`, `validate`, `e2e_s
 3. Rules: `.cursor/rules/rtk-toolkit.mdc` (from `rtk init`)
 
 When `CURSOR=1` or wrappers in `~/.rtk/bin` are on PATH, shell commands route through RTK filters.
+
+## Status bar (`💾`)
+
+Optional: [claude-statusline-pro](https://github.com/andreafinazziinfo/claude-statusline-pro) reads the **global** tracking DB (`~/.local/share/rtk/rtk.db` on WSL). Project `.rtk/rtk.db` has memory/index only — not savings telemetry.
+
+```bash
+# ~/.config/claude-statusline/config.sh
+RTK_DB_PATH="$HOME/.local/share/rtk/rtk.db"
+```
 
 ## Windows (PowerShell)
 

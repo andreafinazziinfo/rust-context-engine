@@ -71,7 +71,23 @@ rtk memory get db_port
 
 If output is truncated, use `rtk show-log <id>` — do not re-run the same noisy command.
 
-## 4. MCP (optional)
+## 4. Status bar (optional)
+
+[claude-statusline-pro](https://github.com/andreafinazziinfo/claude-statusline-pro) shows `💾 N% (-Xk)` from the same global tracking DB as `rtk stats` (statusline = **today only**; `rtk stats` = all-time).
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/andreafinazziinfo/claude-statusline-pro/main/install.sh)
+```
+
+Pin the DB in `~/.config/claude-statusline/config.sh` if WSL/Windows paths diverge:
+
+```bash
+RTK_DB_PATH="$HOME/.local/share/rtk/rtk.db"
+```
+
+Requires the PreToolUse hook (step 2 in README) so Bash commands are rewritten to `rtk …`.
+
+## 5. MCP (optional)
 
 ```bash
 rtk mcp install --client cursor
@@ -79,7 +95,7 @@ rtk mcp install --client cursor
 rtk mcp start
 ```
 
-## 5. Verify health
+## 6. Verify health
 
 ```bash
 rtk doctor          # exit 0 = OK, 1 = critical, 2 = warnings
@@ -94,7 +110,8 @@ rtk index status    # re-run `rtk index run` after large refactors (no file watc
 | Raw git/cargo output | Run `source ~/.bashrc` or `~/.zshrc`; check `rtk doctor` aliases |
 | Empty symbols | `rtk index run` in project root |
 | Hook not rewriting | Absolute path to `hooks/rtk-rewrite.sh` in Claude settings; see README |
-| WSL vs Windows DB | Run RTK in one environment consistently; see `RTK_DB_PATH` in docs |
+| WSL vs Windows DB | Run RTK in one environment consistently; pin `RTK_DB_PATH` in statusline `config.sh` |
+| Missing `💾` in status bar | Hook active + same DB as RTK; see [claude-statusline-pro RTK doc](https://github.com/andreafinazziinfo/claude-statusline-pro/blob/main/docs/rtk-integration.md) |
 
 More: [README](../README.md) · [ROADMAP.md](./ROADMAP.md) · [PLAN_CLOSURE.md](./PLAN_CLOSURE.md) (project status)
 
