@@ -13,4 +13,4 @@ serde_json = "1"
 rtk_db = { package = "rtk-context-db", version = "2.4.0", path = "../rtk-db" }
 rtk_index = { package = "rtk-context-index", version = "2.4.0", path = "../rtk-index" }
 rtk_pack = { package = "rtk-context-pack", version = "2.4.0", path = "../rtk-pack" }
-dirs = "5.0"
+dirs = "6.0"
