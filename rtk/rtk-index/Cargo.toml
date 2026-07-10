@@ -20,7 +20,7 @@ tree-sitter-javascript = "0.23"
 tree-sitter-go = "0.23"
 
 [dependencies.tract-onnx]
-version = "0.21.8"
+version = "0.23.4"
 optional = true
 
 [dependencies.tokenizers]
