@@ -2,6 +2,17 @@ use anyhow::Result;
 use std::fs;
 use std::path::Path;
 
+/// Write only if the file doesn't already exist — never clobber a user's hand-edited
+/// rule/skill file on a repeated `rtk init` run. Profile marker files (rtk-profile.*,
+/// the nested AGENTS.md, CLAUDE.md) are intentionally excluded: those are meant to be
+/// regenerated when `--profile` changes and already have their own overwrite guards.
+fn write_if_absent(path: &Path, content: &str) -> Result<()> {
+    if !path.exists() {
+        fs::write(path, content)?;
+    }
+    Ok(())
+}
+
 const LAZY_DEV_CONTENT: &str = r#"---
 description: Principi Senior Developer — YAGNI, codice minimo, modifiche mirate e diff corti per efficienza token.
 alwaysApply: true
@@ -278,46 +289,46 @@ fn run_init_in(base: &Path, profile: &str) -> Result<()> {
         fs::create_dir_all(dir)?;
     }
 
-    // Write input rules
-    fs::write(cursor_rules_dir.join("lazy-dev.mdc"), LAZY_DEV_CONTENT)?;
-    fs::write(
-        cursor_rules_dir.join("token-efficiency.mdc"),
+    // Write input rules (skip if already present — preserve user edits)
+    write_if_absent(&cursor_rules_dir.join("lazy-dev.mdc"), LAZY_DEV_CONTENT)?;
+    write_if_absent(
+        &cursor_rules_dir.join("token-efficiency.mdc"),
         TOKEN_EFFICIENCY_CONTENT,
     )?;
-    fs::write(
-        cursor_rules_dir.join("rtk-toolkit.mdc"),
+    write_if_absent(
+        &cursor_rules_dir.join("rtk-toolkit.mdc"),
         RTK_TOOLKIT_CONTENT,
     )?;
 
-    fs::write(agents_rules_dir.join("lazy-dev.mdc"), LAZY_DEV_CONTENT)?;
-    fs::write(
-        agents_rules_dir.join("token-efficiency.mdc"),
+    write_if_absent(&agents_rules_dir.join("lazy-dev.mdc"), LAZY_DEV_CONTENT)?;
+    write_if_absent(
+        &agents_rules_dir.join("token-efficiency.mdc"),
         TOKEN_EFFICIENCY_CONTENT,
     )?;
-    fs::write(
-        agents_rules_dir.join("rtk-toolkit.mdc"),
+    write_if_absent(
+        &agents_rules_dir.join("rtk-toolkit.mdc"),
         RTK_TOOLKIT_CONTENT,
     )?;
 
     // Write ponytail logic
-    fs::write(cursor_rules_dir.join("ponytail.mdc"), PONYTAIL_CONTENT)?;
-    fs::write(agents_rules_dir.join("ponytail.md"), PONYTAIL_CONTENT)?;
+    write_if_absent(&cursor_rules_dir.join("ponytail.mdc"), PONYTAIL_CONTENT)?;
+    write_if_absent(&agents_rules_dir.join("ponytail.md"), PONYTAIL_CONTENT)?;
 
     // Write caveman skills
-    fs::write(
-        agents_skills_dir.join("caveman").join("SKILL.md"),
+    write_if_absent(
+        &agents_skills_dir.join("caveman").join("SKILL.md"),
         CAVEMAN_SKILL,
     )?;
-    fs::write(
-        agents_skills_dir.join("caveman-commit").join("SKILL.md"),
+    write_if_absent(
+        &agents_skills_dir.join("caveman-commit").join("SKILL.md"),
         CAVEMAN_COMMIT_SKILL,
     )?;
-    fs::write(
-        agents_skills_dir.join("caveman-compress").join("SKILL.md"),
+    write_if_absent(
+        &agents_skills_dir.join("caveman-compress").join("SKILL.md"),
         CAVEMAN_COMPRESS_SKILL,
     )?;
-    fs::write(
-        agents_skills_dir.join("caveman-review").join("SKILL.md"),
+    write_if_absent(
+        &agents_skills_dir.join("caveman-review").join("SKILL.md"),
         CAVEMAN_REVIEW_SKILL,
     )?;
 
