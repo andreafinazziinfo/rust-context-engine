@@ -390,7 +390,7 @@ description: RTK Output Autonomy Profile
 alwaysApply: true
 ---
 # RTK Output Profile: MAX
-<!-- rtk-profile-version: 2 -->
+<!-- rtk-profile-version: 3 -->
 
 You are operating under the RTK MAX profile for maximum token efficiency.
 1. Always apply the Ponytail philosophy (YAGNI, minimal code, deletion over addition).
@@ -406,7 +406,7 @@ description: RTK Output Autonomy Profile
 alwaysApply: true
 ---
 # RTK Output Profile: HIGH
-<!-- rtk-profile-version: 2 -->
+<!-- rtk-profile-version: 3 -->
 
 You are operating under the RTK HIGH profile for strict token efficiency.
 1. Always apply the Ponytail philosophy (YAGNI, minimal code, deletion over addition).
@@ -420,7 +420,7 @@ description: RTK Output Autonomy Profile
 alwaysApply: true
 ---
 # RTK Output Profile: MEDIUM
-<!-- rtk-profile-version: 2 -->
+<!-- rtk-profile-version: 3 -->
 
 You are operating under the RTK MEDIUM profile for balanced token efficiency.
 1. Always apply the Ponytail philosophy (YAGNI, minimal code, deletion over addition).
@@ -433,7 +433,7 @@ description: RTK Output Autonomy Profile
 alwaysApply: true
 ---
 # RTK Output Profile: LOW
-<!-- rtk-profile-version: 2 -->
+<!-- rtk-profile-version: 3 -->
 
 You are operating under the RTK LOW profile for safe efficiency.
 1. Always apply the Ponytail philosophy (YAGNI, minimal code, deletion over addition).
@@ -447,26 +447,48 @@ You are operating under the RTK LOW profile for safe efficiency.
     fs::write(windsurf_rules_dir.join("rtk-profile.md"), profile_content)?;
     fs::write(agents_rules_dir.join("AGENTS.md"), profile_content)?;
 
+    // Claude Code and GitHub Copilot have no "always-apply rule file" convention
+    // the way Cursor/Windsurf do (.cursor/rules/ponytail.mdc, alwaysApply: true) —
+    // CLAUDE.md / copilot-instructions.md is the *only* channel that reaches them.
+    // Inline the full upstream Ponytail ruleset there instead of the one-line
+    // summary, so those agents get the same decision ladder Cursor users get,
+    // not a lossy stub.
+    let claude_profile_content = format!(
+        "{}\n\n## Ponytail ruleset (full)\n\nClaude Code and GitHub Copilot have no always-apply rule-file convention, so the full ruleset (identical to `.cursor/rules/ponytail.mdc` for Cursor/Windsurf) is inlined here instead of a one-line summary:\n\n{}\n",
+        strip_leading_frontmatter(profile_content),
+        ponytail_body()
+    );
+
     // CLAUDE.md and copilot-instructions.md are user-curated files — never
     // overwritten wholesale. The RTK block is appended once and, being always
     // the last thing appended, is uniquely identified by RTK_BLOCK_MARKER
-    // (the frontmatter start of profile_content). A stale block (from an older
-    // RTK version, missing the current version marker) is left in place unless
-    // `--force-profile` is passed, in which case only that block is replaced —
-    // everything the user wrote before it is preserved untouched.
+    // (its "# RTK Output Profile: <LEVEL>" heading). A stale block (from an
+    // older RTK version, missing the current version marker) is left in place
+    // unless `--force-profile` is passed, in which case only that block is
+    // replaced — everything the user wrote before it is preserved untouched.
     let claude_file = base.join("CLAUDE.md");
-    write_or_update_profile_block(&claude_file, profile_content, force_profile, profile)?;
+    write_or_update_profile_block(
+        &claude_file,
+        &claude_profile_content,
+        force_profile,
+        profile,
+    )?;
 
     let copilot_file = github_dir.join("copilot-instructions.md");
-    write_or_update_profile_block(&copilot_file, profile_content, force_profile, profile)?;
+    write_or_update_profile_block(
+        &copilot_file,
+        &claude_profile_content,
+        force_profile,
+        profile,
+    )?;
 
     Ok(())
 }
 
 /// Unique anchor for the RTK-owned block inside CLAUDE.md / copilot-instructions.md —
-/// the fixed start of every `profile_content` variant above.
-const RTK_BLOCK_MARKER: &str = "---\ndescription: RTK Output Autonomy Profile";
-const RTK_PROFILE_VERSION_MARKER: &str = "<!-- rtk-profile-version: 2 -->";
+/// present in every profile variant regardless of frontmatter.
+const RTK_BLOCK_MARKER: &str = "# RTK Output Profile: ";
+const RTK_PROFILE_VERSION_MARKER: &str = "<!-- rtk-profile-version: 3 -->";
 
 /// Strip a previously-appended RTK profile block from `content`, returning
 /// everything before it (trimmed). No-op if no RTK block is present.
@@ -475,6 +497,25 @@ fn strip_rtk_profile_block(content: &str) -> String {
         Some(idx) => content[..idx].trim_end().to_string(),
         None => content.trim_end().to_string(),
     }
+}
+
+/// Drop a leading Cursor-style `---\n...\n---\n` frontmatter block, if present.
+/// CLAUDE.md/copilot-instructions.md have no frontmatter convention — only the
+/// heading and body are meaningful there.
+fn strip_leading_frontmatter(s: &str) -> &str {
+    let trimmed = s.trim_start();
+    if let Some(rest) = trimmed.strip_prefix("---\n") {
+        if let Some(end) = rest.find("\n---\n") {
+            return rest[end + 5..].trim_start();
+        }
+    }
+    trimmed
+}
+
+/// The full upstream Ponytail ruleset (github.com/DietrichGebert/ponytail),
+/// with its own Cursor-only frontmatter stripped.
+fn ponytail_body() -> &'static str {
+    strip_leading_frontmatter(PONYTAIL_CONTENT)
 }
 
 /// Write or append the RTK profile block to a user-curated file (CLAUDE.md,
@@ -718,6 +759,45 @@ mod tests {
         assert_eq!(rtk_rules, RTK_TOOLKIT_CONTENT);
 
         fs::remove_dir_all(temp_dir).unwrap();
+    }
+
+    #[test]
+    fn test_claude_and_copilot_get_full_ponytail_ruleset_not_stub() {
+        for profile in ["low", "medium", "high", "max"] {
+            let temp_dir = std::env::temp_dir()
+                .join(format!("rtk_ponytail_inline_{profile}_{}", rand_suffix()));
+            fs::create_dir_all(&temp_dir).unwrap();
+
+            run_init_in(&temp_dir, profile, false).unwrap();
+
+            // Claude Code and Copilot have no always-apply rule-file convention —
+            // CLAUDE.md / copilot-instructions.md must carry the real ruleset,
+            // not just the one-line "Always apply the Ponytail philosophy" stub.
+            for path in [
+                temp_dir.join("CLAUDE.md"),
+                temp_dir.join(".github/copilot-instructions.md"),
+            ] {
+                let content = fs::read_to_string(&path).unwrap();
+                assert!(
+                    content.contains("Does the standard library already do this?"),
+                    "profile {profile}: {} missing full Ponytail decision ladder",
+                    path.display()
+                );
+                assert!(
+                    content.contains("Deletion over addition"),
+                    "profile {profile}: {} missing full Ponytail rules",
+                    path.display()
+                );
+            }
+
+            // Cursor/Windsurf already have their own dedicated always-apply file
+            // (ponytail.mdc) — the inline summary there is intentional, unchanged.
+            let cursor_profile =
+                fs::read_to_string(temp_dir.join(".cursor/rules/rtk-profile.mdc")).unwrap();
+            assert!(cursor_profile.contains("Always apply the Ponytail philosophy"));
+
+            fs::remove_dir_all(temp_dir).unwrap();
+        }
     }
 
     #[test]
