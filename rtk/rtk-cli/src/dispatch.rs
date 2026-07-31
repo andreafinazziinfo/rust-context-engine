@@ -357,7 +357,10 @@ pub fn dispatch(command: Commands) -> Result<()> {
                 })
             }
         },
-        Commands::Init { profile } => setup::run_init(&profile),
+        Commands::Init {
+            profile,
+            force_profile,
+        } => setup::run_init(&profile, force_profile),
         Commands::Status => status::run_status(),
         Commands::Gc => tracking::gc().map(|purged| {
             println!("🗑️ Database garbage collection complete: removed {} log records older than 30 days.", purged);
