@@ -20,17 +20,12 @@ pub fn run_status() -> Result<()> {
     let profile_path = Path::new(".cursor/rules/rtk-profile.mdc");
     let (profile_name, profile_desc) = if profile_path.exists() {
         match fs::read_to_string(profile_path) {
-            Ok(content) => {
-                if content.contains("caveman-ultra") {
-                    ("MAX", "Ponytail + Caveman Ultra")
-                } else if content.contains("caveman-full") {
-                    ("HIGH", "Ponytail + Caveman Full")
-                } else if content.contains("caveman-lite") {
-                    ("MEDIUM", "Ponytail + Caveman Lite")
-                } else {
-                    ("LOW", "Ponytail Only")
-                }
-            }
+            Ok(content) => match active_profile_level(&content) {
+                Some("MAX") => ("MAX", "Ponytail + Caveman Ultra"),
+                Some("HIGH") => ("HIGH", "Ponytail + Caveman Full"),
+                Some("MEDIUM") => ("MEDIUM", "Ponytail + Caveman Lite"),
+                _ => ("LOW", "Ponytail Only"),
+            },
             Err(_) => ("UNKNOWN", "Could not read profile"),
         }
     } else {
@@ -38,6 +33,22 @@ pub fn run_status() -> Result<()> {
     };
 
     println!("🤖 Output Profile:   {} ({})", profile_name, profile_desc);
+
+    if let Some(skill) = active_profile_skill(profile_name) {
+        print!("🗣️  Caveman Skill:    ");
+        let claude_skill = Path::new(".claude/skills").join(skill).join("SKILL.md");
+        if claude_skill.exists() {
+            println!("✅ \"{skill}\" found in .claude/skills/");
+        } else {
+            println!(
+                "⚠️  \"{skill}\" referenced by profile but missing at {}",
+                claude_skill.display()
+            );
+            println!(
+                "   👉 Run `rtk init --profile <level> --force-profile` to reinstall skill files."
+            );
+        }
+    }
 
     let cfg = crate::config::get_config();
     let local_exists = Path::new(".rtk.json").exists();
@@ -65,6 +76,27 @@ pub fn run_status() -> Result<()> {
 /// Whether Claude/Gemini settings reference the RTK rewrite hook.
 pub fn is_rewrite_hook_installed() -> bool {
     check_hook_installed()
+}
+
+/// Parse the profile level from a generated `rtk-profile.mdc`/`AGENTS.md` block by
+/// its `# RTK Output Profile: <LEVEL>` heading — the single source of truth, instead
+/// of sniffing for level-specific substrings that drift when the prose wording changes.
+pub fn active_profile_level(content: &str) -> Option<&'static str> {
+    for level in ["MAX", "HIGH", "MEDIUM", "LOW"] {
+        if content.contains(&format!("# RTK Output Profile: {level}")) {
+            return Some(level);
+        }
+    }
+    None
+}
+
+/// The skill name a given profile level auto-triggers (all levels use the single
+/// level-parameterized "caveman" skill), or `None` for LOW/unset (no caveman skill).
+pub fn active_profile_skill(profile_name: &str) -> Option<&'static str> {
+    match profile_name {
+        "MAX" | "HIGH" | "MEDIUM" => Some("caveman"),
+        _ => None,
+    }
 }
 
 fn check_hook_installed() -> bool {
