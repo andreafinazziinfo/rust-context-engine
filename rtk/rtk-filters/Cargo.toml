@@ -1,6 +1,6 @@
 [package]
 name = "rtk-context-filters"
-version = "2.4.1"
+version = "2.4.2"
 edition = "2021"
 description = "RTK — pre-built parser filters for CLI command outputs"
 license = "Apache-2.0"

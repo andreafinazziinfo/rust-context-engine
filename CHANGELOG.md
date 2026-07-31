@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.4.2] - 2026-08-04
+
+### Fixed
+*   **`.claude/skills` never written** — `rtk init` wrote caveman/ponytail skill files only under `.agents/skills/`, a path Claude Code never reads (it discovers skills exclusively from `.claude/skills/<name>/SKILL.md`). Skills are now written to both locations.
+*   **Profile text cited nonexistent skill names** — the HIGH/MEDIUM/MAX profile blocks instructed the agent to trigger `caveman-full`/`caveman-lite`/`caveman-ultra`, none of which were ever generated as assets (only the single, level-parameterized `caveman` skill exists, matching upstream [JuliusBrussee/caveman](https://github.com/JuliusBrussee/caveman)). Profile text now references `caveman` + the level as a parameter.
+*   **`rtk doctor`/`rtk status`** now verify the skill referenced by the active profile actually exists under `.claude/skills/`, and warn with a fix command if not.
+
+### Added
+*   `rtk init --force-profile` — regenerates an outdated `RTK Output Profile` block in `CLAUDE.md`/`copilot-instructions.md` (versioned via an internal marker) without touching any other content in the file. Needed because the two bugs above mean every existing `rtk init` install is silently broken and the normal idempotent guard would otherwise never let the fix reach already-initialized projects.
+*   `rtk init` prints a one-line hint to install the official `claude plugin marketplace add JuliusBrussee/caveman` plugin when the `claude` CLI is detected on `PATH`.
+
+See `docs/PLAN_CLAUDE_SKILLS_FIX.md` for the full root-cause analysis and design.
+
 ## [2.4.1] - 2026-08-04
 
 ### Fixed
