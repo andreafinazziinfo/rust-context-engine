@@ -127,8 +127,8 @@ pub fn find_symbols(conn: &Connection, name_query: &str) -> Result<Vec<DbSymbol>
             name: r.get(1)?,
             kind: r.get(2)?,
             file_path: r.get(3)?,
-            line_start: r.get(4)?,
-            line_end: r.get(5)?,
+            line_start: r.get::<_, i64>(4)? as usize,
+            line_end: r.get::<_, i64>(5)? as usize,
         })
     })?;
 
@@ -148,8 +148,8 @@ pub fn get_all_symbols(conn: &Connection) -> Result<Vec<DbSymbol>> {
             name: r.get(1)?,
             kind: r.get(2)?,
             file_path: r.get(3)?,
-            line_start: r.get(4)?,
-            line_end: r.get(5)?,
+            line_start: r.get::<_, i64>(4)? as usize,
+            line_end: r.get::<_, i64>(5)? as usize,
         })
     })?;
     let mut list = Vec::new();
@@ -192,8 +192,8 @@ pub fn get_symbol_references(conn: &Connection, symbol_name: &str) -> Result<Vec
             name: r.get(1)?,
             kind: r.get(2)?,
             file_path: r.get(3)?,
-            line_start: r.get(4)?,
-            line_end: r.get(5)?,
+            line_start: r.get::<_, i64>(4)? as usize,
+            line_end: r.get::<_, i64>(5)? as usize,
         })
     })?;
 
