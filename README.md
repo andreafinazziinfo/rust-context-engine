@@ -25,7 +25,7 @@
 
 ---
 
-> **Quickstart (~5 min):** [docs/QUICKSTART.md](docs/QUICKSTART.md) · **User guide:** [docs/USER.md](docs/USER.md) · **Community:** [Discussions](https://github.com/andreafinazziinfo/rust-context-engine/discussions) · **Status:** [v2.4.0 shipped](https://github.com/andreafinazziinfo/rust-context-engine/releases/tag/v2.4.0) — 8 new command filters (Python + Vue/TS + ops), DLP hardening ([CHANGELOG](CHANGELOG.md))
+> **Quickstart (~5 min):** [docs/QUICKSTART.md](docs/QUICKSTART.md) · **User guide:** [docs/USER.md](docs/USER.md) · **Community:** [Discussions](https://github.com/andreafinazziinfo/rust-context-engine/discussions) · **Status:** [v2.4.1 shipped](https://github.com/andreafinazziinfo/rust-context-engine/releases/tag/v2.4.1) — rusqlite 0.40 compatibility fix, dependency catch-up ([CHANGELOG](CHANGELOG.md))
 
 > **Install:** `cargo install rtk-context-engine --locked` · **macOS:** `brew tap andreafinazziinfo/rust-context-engine && brew install rtk` · **Windows:** [release zip](https://github.com/andreafinazziinfo/rust-context-engine/releases/latest)
 
@@ -504,7 +504,13 @@ To ensure complete project portability and clean namespace isolation, RTK consol
 
 See **[docs/CONTRIBUTING.md](docs/CONTRIBUTING.md)** — `rtk validate`, golden fixtures, release checklist, git hooks.
 
-**Maintainers:** [docs/RELEASE.md](docs/RELEASE.md) · **Roadmap:** [docs/ROADMAP.md](docs/ROADMAP.md) · **Active plan:** [docs/PLAN_CLOSURE.md](docs/PLAN_CLOSURE.md) (Fase D: real-world use, no new features)
+**Maintainers:** [docs/RELEASE.md](docs/RELEASE.md) · **Roadmap:** [docs/ROADMAP.md](docs/ROADMAP.md) · **Active plan:** [docs/PLAN_CLOSURE.md](docs/PLAN_CLOSURE.md) (Fase D: real-world use, no new features) · **Tech debt:** [TECHNICAL_DEBT_LEDGER.md](TECHNICAL_DEBT_LEDGER.md)
+
+---
+
+## 🔒 Security
+
+See **[SECURITY.md](SECURITY.md)** to report a vulnerability. Every CI run scans dependencies with `cargo audit` and CodeQL.
 
 ---
 

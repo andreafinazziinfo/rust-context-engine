@@ -1,5 +1,12 @@
 # Release checklist (maintainer)
 
+## v2.4.1 (dependency catch-up + rusqlite 0.40 fix)
+
+See [CHANGELOG](../CHANGELOG.md#241---2026-08-04)
+
+- rusqlite 0.40 compatibility fix (usize FromSql/ToSql), plus 15 dependency bumps accumulated since v2.4.0 (incl. RUSTSEC-2026-0204 crossbeam-epoch fix)
+- Added `SECURITY.md`, `TECHNICAL_DEBT_LEDGER.md`, `ADR-001`/`ADR-002` from the first Brownfield ASSESSMENT baseline
+
 ## v2.3.2 (Fase D — fixes & dependency alignment)
 
 See [CHANGELOG](../CHANGELOG.md#232---2026-06-30) · [GitHub release](https://github.com/andreafinazziinfo/rust-context-engine/releases/tag/v2.3.2)

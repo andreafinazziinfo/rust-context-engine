@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.4.1] - 2026-08-04
+
+### Fixed
+*   `rusqlite` bumped 0.32 → 0.40: two crates (`rtk-context-db`, `rtk-context-index`) read/bound `usize` directly against `rusqlite::Row`/`params!`, which 0.40 no longer supports (`FromSql`/`ToSql` narrowed to fixed-width integer types). Now read as `i64` and cast at the boundary; no public struct field types changed.
+
+### Dependencies
+*   Bumped `crossbeam-epoch` 0.9.18 → 0.9.20 (RUSTSEC-2026-0204), `petgraph` 0.6.5 → 0.8.3, `ndarray` 0.15.6 → 0.17.2, `tract-onnx` 0.21.17 → 0.23.4, `regex` 1.12.4 → 1.13.0, `tree-sitter-rust` 0.23.3 → 0.24.2, `tree-sitter-python` 0.23.6 → 0.25.0, `tree-sitter-java` 0.23.2 → 0.23.5, `tree-sitter` 0.24.7 → 0.26.10, `dirs` 5.0.1 → 6.0.0, `rusqlite` 0.32.0 → 0.40.1.
+
+### Added
+*   `SECURITY.md` — vulnerability disclosure process.
+*   `TECHNICAL_DEBT_LEDGER.md` and `ADR-001`/`ADR-002` (retroactive) — first Brownfield ASSESSMENT baseline.
+
 ## [2.4.0] - 2026-07-02
 
 ### Added
