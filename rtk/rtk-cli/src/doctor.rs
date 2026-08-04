@@ -156,6 +156,31 @@ pub fn run_doctor() -> DoctorOutcome {
         warnings = true;
     }
 
+    print!("🗣️  Caveman Skill: ");
+    let profile_path = std::path::Path::new(".cursor/rules/rtk-profile.mdc");
+    match std::fs::read_to_string(profile_path)
+        .ok()
+        .and_then(|c| status::active_profile_level(&c))
+        .and_then(status::active_profile_skill)
+    {
+        None => println!("ℹ️  no caveman skill referenced (LOW profile or `rtk init` not run)"),
+        Some(skill) => {
+            let claude_skill = PathBuf::from(".claude/skills").join(skill).join("SKILL.md");
+            if claude_skill.exists() {
+                println!("✅ OK (\"{skill}\" found in .claude/skills/)");
+            } else {
+                println!(
+                    "⚠️  \"{skill}\" referenced by profile but missing at {}",
+                    claude_skill.display()
+                );
+                println!(
+                    "   👉 Run `rtk init --profile <level> --force-profile` to reinstall skill files."
+                );
+                warnings = true;
+            }
+        }
+    }
+
     print!("🦀 Rust Toolchain: ");
     match std::process::Command::new("rustc")
         .arg("--version")

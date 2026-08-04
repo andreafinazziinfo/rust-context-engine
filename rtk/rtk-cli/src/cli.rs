@@ -286,6 +286,11 @@ pub(crate) enum Commands {
         /// The savings profile to use: low, medium, high, max
         #[arg(long, default_value = "high")]
         profile: String,
+        /// Regenerate an outdated RTK Output Profile block in CLAUDE.md /
+        /// copilot-instructions.md. Only the RTK-owned block is replaced —
+        /// everything else in the file is preserved untouched.
+        #[arg(long, default_value_t = false)]
+        force_profile: bool,
     },
     /// Show the current RTK status and active profile
     Status,

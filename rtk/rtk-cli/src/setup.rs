@@ -125,12 +125,12 @@ const CAVEMAN_REVIEW_SKILL: &str = include_str!("../assets/caveman/caveman-revie
 
 /// Initialize the workspace by writing custom AI agent rules, custom skills, and setting up editor integration.
 /// Supports Low, Medium, High, and Max savings profiles.
-pub fn run_init(profile: &str) -> Result<()> {
+pub fn run_init(profile: &str, force_profile: bool) -> Result<()> {
     println!(
         "⚙️ Bootstrapping AI Efficiency rules in the current directory (Profile: {})...",
         profile.to_uppercase()
     );
-    run_init_in(Path::new("."), profile)?;
+    run_init_in(Path::new("."), profile, force_profile)?;
 
     println!("✅ Created rules inside .cursor/rules/ and .agents/rules/");
     println!();
@@ -194,7 +194,28 @@ pub fn run_init(profile: &str) -> Result<()> {
     // Create ~/.rtk/bin wrappers
     let _ = create_path_wrappers();
 
+    if claude_cli_available() {
+        println!();
+        println!("💡 Claude Code CLI detected. For the best-supported caveman experience");
+        println!("   (native statusline, auto-updates, official hooks), you can also run:");
+        println!("   claude plugin marketplace add JuliusBrussee/caveman && claude plugin install caveman@caveman");
+    }
+
     Ok(())
+}
+
+/// Whether a `claude` executable is reachable on PATH — used only to print an
+/// optional hint, never executed.
+fn claude_cli_available() -> bool {
+    let Some(path_var) = std::env::var_os("PATH") else {
+        return false;
+    };
+    let exe_name = if cfg!(windows) {
+        "claude.exe"
+    } else {
+        "claude"
+    };
+    std::env::split_paths(&path_var).any(|dir| dir.join(exe_name).is_file())
 }
 
 fn create_path_wrappers() -> Result<()> {
@@ -267,11 +288,15 @@ fi
     Ok(())
 }
 
-fn run_init_in(base: &Path, profile: &str) -> Result<()> {
+fn run_init_in(base: &Path, profile: &str, force_profile: bool) -> Result<()> {
     let cursor_rules_dir = base.join(".cursor").join("rules");
     let windsurf_rules_dir = base.join(".windsurf").join("rules");
     let agents_rules_dir = base.join(".agents").join("rules");
     let agents_skills_dir = base.join(".agents").join("skills");
+    // Claude Code discovers skills exclusively from .claude/skills/<name>/SKILL.md —
+    // .agents/skills alone is invisible to it. Write to both so every supported
+    // agent convention resolves the same skill files.
+    let claude_skills_dir = base.join(".claude").join("skills");
     let github_dir = base.join(".github");
 
     // Create directories
@@ -283,6 +308,10 @@ fn run_init_in(base: &Path, profile: &str) -> Result<()> {
         &agents_skills_dir.join("caveman-commit"),
         &agents_skills_dir.join("caveman-compress"),
         &agents_skills_dir.join("caveman-review"),
+        &claude_skills_dir.join("caveman"),
+        &claude_skills_dir.join("caveman-commit"),
+        &claude_skills_dir.join("caveman-compress"),
+        &claude_skills_dir.join("caveman-review"),
         &github_dir,
     ];
     for dir in &dirs {
@@ -314,7 +343,7 @@ fn run_init_in(base: &Path, profile: &str) -> Result<()> {
     write_if_absent(&cursor_rules_dir.join("ponytail.mdc"), PONYTAIL_CONTENT)?;
     write_if_absent(&agents_rules_dir.join("ponytail.md"), PONYTAIL_CONTENT)?;
 
-    // Write caveman skills
+    // Write caveman skills — both conventions, same content, never overwritten once present.
     write_if_absent(
         &agents_skills_dir.join("caveman").join("SKILL.md"),
         CAVEMAN_SKILL,
@@ -331,8 +360,29 @@ fn run_init_in(base: &Path, profile: &str) -> Result<()> {
         &agents_skills_dir.join("caveman-review").join("SKILL.md"),
         CAVEMAN_REVIEW_SKILL,
     )?;
+    write_if_absent(
+        &claude_skills_dir.join("caveman").join("SKILL.md"),
+        CAVEMAN_SKILL,
+    )?;
+    write_if_absent(
+        &claude_skills_dir.join("caveman-commit").join("SKILL.md"),
+        CAVEMAN_COMMIT_SKILL,
+    )?;
+    write_if_absent(
+        &claude_skills_dir.join("caveman-compress").join("SKILL.md"),
+        CAVEMAN_COMPRESS_SKILL,
+    )?;
+    write_if_absent(
+        &claude_skills_dir.join("caveman-review").join("SKILL.md"),
+        CAVEMAN_REVIEW_SKILL,
+    )?;
 
-    // Generate output profile rule
+    // Generate output profile rule.
+    //
+    // The skill triggered here is always the single, level-parameterized "caveman"
+    // skill (matching upstream github.com/JuliusBrussee/caveman: `/caveman
+    // lite|full|ultra`) — never a per-level skill name like "caveman-full", which
+    // was never generated as an asset and never resolves to anything.
     let profile_content = match profile.to_lowercase().as_str() {
         "max" => {
             r#"---
@@ -340,10 +390,11 @@ description: RTK Output Autonomy Profile
 alwaysApply: true
 ---
 # RTK Output Profile: MAX
+<!-- rtk-profile-version: 3 -->
 
 You are operating under the RTK MAX profile for maximum token efficiency.
 1. Always apply the Ponytail philosophy (YAGNI, minimal code, deletion over addition).
-2. You MUST auto-trigger the **caveman-ultra** skill for every response (no articles, heavy abbreviation).
+2. You MUST auto-trigger the **caveman** skill at level **ultra** for every response (no articles, heavy abbreviation).
 3. Auto-trigger **caveman-commit** for all git commit operations.
 4. Auto-trigger **caveman-review** for all code reviews.
 5. Auto-trigger **caveman-compress** when writing persistent memories or documentation.
@@ -355,10 +406,11 @@ description: RTK Output Autonomy Profile
 alwaysApply: true
 ---
 # RTK Output Profile: HIGH
+<!-- rtk-profile-version: 3 -->
 
 You are operating under the RTK HIGH profile for strict token efficiency.
 1. Always apply the Ponytail philosophy (YAGNI, minimal code, deletion over addition).
-2. You MUST auto-trigger the **caveman-full** skill for every response (no articles, short phrasing).
+2. You MUST auto-trigger the **caveman** skill at level **full** for every response (no articles, short phrasing).
 3. Auto-trigger **caveman-commit** for all git commit operations.
 "#
         }
@@ -368,10 +420,11 @@ description: RTK Output Autonomy Profile
 alwaysApply: true
 ---
 # RTK Output Profile: MEDIUM
+<!-- rtk-profile-version: 3 -->
 
 You are operating under the RTK MEDIUM profile for balanced token efficiency.
 1. Always apply the Ponytail philosophy (YAGNI, minimal code, deletion over addition).
-2. You MUST auto-trigger the **caveman-lite** skill for every response (complete sentences but no filler/hedging).
+2. You MUST auto-trigger the **caveman** skill at level **lite** for every response (complete sentences but no filler/hedging).
 "#
         }
         _ => {
@@ -380,6 +433,7 @@ description: RTK Output Autonomy Profile
 alwaysApply: true
 ---
 # RTK Output Profile: LOW
+<!-- rtk-profile-version: 3 -->
 
 You are operating under the RTK LOW profile for safe efficiency.
 1. Always apply the Ponytail philosophy (YAGNI, minimal code, deletion over addition).
@@ -393,28 +447,111 @@ You are operating under the RTK LOW profile for safe efficiency.
     fs::write(windsurf_rules_dir.join("rtk-profile.md"), profile_content)?;
     fs::write(agents_rules_dir.join("AGENTS.md"), profile_content)?;
 
-    // CLAUDE.md is a user-curated file — never overwrite it. Append the RTK
-    // profile once, preserving existing content (same guard pattern as the
-    // copilot-instructions append below). Empty/absent file is written fresh.
-    let claude_file = base.join("CLAUDE.md");
-    let existing_claude = fs::read_to_string(&claude_file).unwrap_or_default();
-    if existing_claude.trim().is_empty() {
-        fs::write(&claude_file, profile_content)?;
-    } else if !existing_claude.contains("RTK Output Profile") {
-        fs::write(
-            &claude_file,
-            format!("{}\n\n{}", existing_claude, profile_content),
-        )?;
-    }
+    // Claude Code and GitHub Copilot have no "always-apply rule file" convention
+    // the way Cursor/Windsurf do (.cursor/rules/ponytail.mdc, alwaysApply: true) —
+    // CLAUDE.md / copilot-instructions.md is the *only* channel that reaches them.
+    // Inline the full upstream Ponytail ruleset there instead of the one-line
+    // summary, so those agents get the same decision ladder Cursor users get,
+    // not a lossy stub.
+    let claude_profile_content = format!(
+        "{}\n\n## Ponytail ruleset (full)\n\nClaude Code and GitHub Copilot have no always-apply rule-file convention, so the full ruleset (identical to `.cursor/rules/ponytail.mdc` for Cursor/Windsurf) is inlined here instead of a one-line summary:\n\n{}\n",
+        strip_leading_frontmatter(profile_content),
+        ponytail_body()
+    );
 
-    // Append to copilot instructions
+    // CLAUDE.md and copilot-instructions.md are user-curated files — never
+    // overwritten wholesale. The RTK block is appended once and, being always
+    // the last thing appended, is uniquely identified by RTK_BLOCK_MARKER
+    // (its "# RTK Output Profile: <LEVEL>" heading). A stale block (from an
+    // older RTK version, missing the current version marker) is left in place
+    // unless `--force-profile` is passed, in which case only that block is
+    // replaced — everything the user wrote before it is preserved untouched.
+    let claude_file = base.join("CLAUDE.md");
+    write_or_update_profile_block(
+        &claude_file,
+        &claude_profile_content,
+        force_profile,
+        profile,
+    )?;
+
     let copilot_file = github_dir.join("copilot-instructions.md");
-    let existing = fs::read_to_string(&copilot_file).unwrap_or_default();
-    if !existing.contains("RTK Output Profile") {
-        fs::write(
-            &copilot_file,
-            format!("{}\n\n{}", existing, profile_content),
-        )?;
+    write_or_update_profile_block(
+        &copilot_file,
+        &claude_profile_content,
+        force_profile,
+        profile,
+    )?;
+
+    Ok(())
+}
+
+/// Unique anchor for the RTK-owned block inside CLAUDE.md / copilot-instructions.md —
+/// present in every profile variant regardless of frontmatter.
+const RTK_BLOCK_MARKER: &str = "# RTK Output Profile: ";
+const RTK_PROFILE_VERSION_MARKER: &str = "<!-- rtk-profile-version: 3 -->";
+
+/// Strip a previously-appended RTK profile block from `content`, returning
+/// everything before it (trimmed). No-op if no RTK block is present.
+fn strip_rtk_profile_block(content: &str) -> String {
+    match content.find(RTK_BLOCK_MARKER) {
+        Some(idx) => content[..idx].trim_end().to_string(),
+        None => content.trim_end().to_string(),
+    }
+}
+
+/// Drop a leading Cursor-style `---\n...\n---\n` frontmatter block, if present.
+/// CLAUDE.md/copilot-instructions.md have no frontmatter convention — only the
+/// heading and body are meaningful there.
+fn strip_leading_frontmatter(s: &str) -> &str {
+    let trimmed = s.trim_start();
+    if let Some(rest) = trimmed.strip_prefix("---\n") {
+        if let Some(end) = rest.find("\n---\n") {
+            return rest[end + 5..].trim_start();
+        }
+    }
+    trimmed
+}
+
+/// The full upstream Ponytail ruleset (github.com/DietrichGebert/ponytail),
+/// with its own Cursor-only frontmatter stripped.
+fn ponytail_body() -> &'static str {
+    strip_leading_frontmatter(PONYTAIL_CONTENT)
+}
+
+/// Write or append the RTK profile block to a user-curated file (CLAUDE.md,
+/// copilot-instructions.md), never clobbering unrelated content:
+/// - empty/absent file → written fresh
+/// - no RTK block yet → appended once
+/// - RTK block present and current → left untouched (idempotent)
+/// - RTK block present but stale (older version) → left untouched with a hint,
+///   unless `force_profile` is set, in which case only that block is replaced
+fn write_or_update_profile_block(
+    file: &Path,
+    profile_content: &str,
+    force_profile: bool,
+    profile: &str,
+) -> Result<()> {
+    let existing = fs::read_to_string(file).unwrap_or_default();
+
+    if existing.trim().is_empty() {
+        fs::write(file, profile_content)?;
+    } else if existing.contains(RTK_PROFILE_VERSION_MARKER) {
+        // Already up to date — idempotent no-op.
+    } else if existing.contains("RTK Output Profile") {
+        if force_profile {
+            let cleaned = strip_rtk_profile_block(&existing);
+            fs::write(file, format!("{}\n\n{}", cleaned, profile_content))?;
+        } else {
+            println!(
+                "⚠️  {} has an outdated RTK Output Profile block.",
+                file.display()
+            );
+            println!(
+                "   👉 Run `rtk init --profile {profile} --force-profile` to refresh it (only the RTK-owned block is replaced)."
+            );
+        }
+    } else {
+        fs::write(file, format!("{}\n\n{}", existing, profile_content))?;
     }
 
     Ok(())
@@ -605,7 +742,7 @@ mod tests {
         let temp_dir = std::env::temp_dir().join(format!("rtk_init_test_{}", rand_suffix()));
         fs::create_dir_all(&temp_dir).unwrap();
 
-        run_init_in(&temp_dir, "high").unwrap();
+        run_init_in(&temp_dir, "high", false).unwrap();
 
         assert!(temp_dir.join(".cursor/rules/lazy-dev.mdc").exists());
         assert!(temp_dir.join(".cursor/rules/token-efficiency.mdc").exists());
@@ -625,6 +762,45 @@ mod tests {
     }
 
     #[test]
+    fn test_claude_and_copilot_get_full_ponytail_ruleset_not_stub() {
+        for profile in ["low", "medium", "high", "max"] {
+            let temp_dir = std::env::temp_dir()
+                .join(format!("rtk_ponytail_inline_{profile}_{}", rand_suffix()));
+            fs::create_dir_all(&temp_dir).unwrap();
+
+            run_init_in(&temp_dir, profile, false).unwrap();
+
+            // Claude Code and Copilot have no always-apply rule-file convention —
+            // CLAUDE.md / copilot-instructions.md must carry the real ruleset,
+            // not just the one-line "Always apply the Ponytail philosophy" stub.
+            for path in [
+                temp_dir.join("CLAUDE.md"),
+                temp_dir.join(".github/copilot-instructions.md"),
+            ] {
+                let content = fs::read_to_string(&path).unwrap();
+                assert!(
+                    content.contains("Does the standard library already do this?"),
+                    "profile {profile}: {} missing full Ponytail decision ladder",
+                    path.display()
+                );
+                assert!(
+                    content.contains("Deletion over addition"),
+                    "profile {profile}: {} missing full Ponytail rules",
+                    path.display()
+                );
+            }
+
+            // Cursor/Windsurf already have their own dedicated always-apply file
+            // (ponytail.mdc) — the inline summary there is intentional, unchanged.
+            let cursor_profile =
+                fs::read_to_string(temp_dir.join(".cursor/rules/rtk-profile.mdc")).unwrap();
+            assert!(cursor_profile.contains("Always apply the Ponytail philosophy"));
+
+            fs::remove_dir_all(temp_dir).unwrap();
+        }
+    }
+
+    #[test]
     fn test_init_preserves_existing_claude_md() {
         let temp_dir = std::env::temp_dir().join(format!("rtk_init_preserve_{}", rand_suffix()));
         fs::create_dir_all(&temp_dir).unwrap();
@@ -633,7 +809,7 @@ mod tests {
         let claude = temp_dir.join("CLAUDE.md");
         fs::write(&claude, curated).unwrap();
 
-        run_init_in(&temp_dir, "high").unwrap();
+        run_init_in(&temp_dir, "high", false).unwrap();
 
         let after = fs::read_to_string(&claude).unwrap();
         // Existing curated content is preserved...
@@ -643,13 +819,95 @@ mod tests {
         assert!(after.contains("RTK Output Profile"));
 
         // Idempotent: a second init must not duplicate the profile block.
-        run_init_in(&temp_dir, "high").unwrap();
+        run_init_in(&temp_dir, "high", false).unwrap();
         let after2 = fs::read_to_string(&claude).unwrap();
         assert_eq!(
             after2.matches("RTK Output Profile").count(),
             1,
             "RTK profile appended more than once"
         );
+
+        fs::remove_dir_all(temp_dir).unwrap();
+    }
+
+    #[test]
+    fn test_claude_skills_dir_populated_for_every_profile() {
+        for profile in ["low", "medium", "high", "max"] {
+            let temp_dir =
+                std::env::temp_dir().join(format!("rtk_claude_skills_{profile}_{}", rand_suffix()));
+            fs::create_dir_all(&temp_dir).unwrap();
+
+            run_init_in(&temp_dir, profile, false).unwrap();
+
+            let caveman = temp_dir.join(".claude/skills/caveman/SKILL.md");
+            assert!(
+                caveman.exists(),
+                "profile {profile}: .claude/skills/caveman/SKILL.md missing"
+            );
+            assert_eq!(fs::read_to_string(&caveman).unwrap(), CAVEMAN_SKILL);
+
+            let commit = temp_dir.join(".claude/skills/caveman-commit/SKILL.md");
+            assert!(
+                commit.exists(),
+                "profile {profile}: .claude/skills/caveman-commit/SKILL.md missing"
+            );
+
+            fs::remove_dir_all(temp_dir).unwrap();
+        }
+    }
+
+    #[test]
+    fn test_profile_text_never_cites_nonexistent_skill_names() {
+        for profile in ["low", "medium", "high", "max"] {
+            let temp_dir =
+                std::env::temp_dir().join(format!("rtk_profile_names_{profile}_{}", rand_suffix()));
+            fs::create_dir_all(&temp_dir).unwrap();
+
+            run_init_in(&temp_dir, profile, false).unwrap();
+
+            let generated =
+                fs::read_to_string(temp_dir.join(".cursor/rules/rtk-profile.mdc")).unwrap();
+            for fake_name in ["caveman-full", "caveman-lite", "caveman-ultra"] {
+                assert!(
+                    !generated.contains(fake_name),
+                    "profile {profile}: text still cites nonexistent skill name {fake_name}"
+                );
+            }
+
+            fs::remove_dir_all(temp_dir).unwrap();
+        }
+    }
+
+    #[test]
+    fn test_force_profile_migrates_stale_block_without_losing_user_content() {
+        let temp_dir = std::env::temp_dir().join(format!("rtk_force_profile_{}", rand_suffix()));
+        fs::create_dir_all(&temp_dir).unwrap();
+        let claude = temp_dir.join("CLAUDE.md");
+
+        // Simulate a pre-existing, stale RTK block (no version marker) generated
+        // by an older rtk init run, preceded by real user content.
+        let stale = "# My Project\n\n## Stack\ndocker compose up -d\n\n---\ndescription: RTK Output Autonomy Profile\nalwaysApply: true\n---\n# RTK Output Profile: HIGH\n\nYou are operating under the RTK HIGH profile for strict token efficiency.\n1. Always apply the Ponytail philosophy (YAGNI, minimal code, deletion over addition).\n2. You MUST auto-trigger the **caveman-full** skill for every response (no articles, short phrasing).\n3. Auto-trigger **caveman-commit** for all git commit operations.\n";
+        fs::write(&claude, stale).unwrap();
+
+        // Without --force-profile: stale block left untouched (no silent rewrite).
+        run_init_in(&temp_dir, "high", false).unwrap();
+        let unchanged = fs::read_to_string(&claude).unwrap();
+        assert_eq!(
+            unchanged, stale,
+            "stale block must not change without --force-profile"
+        );
+
+        // With --force-profile: only the RTK block is replaced, user content survives.
+        run_init_in(&temp_dir, "high", true).unwrap();
+        let migrated = fs::read_to_string(&claude).unwrap();
+        assert!(
+            migrated.contains("## Stack"),
+            "user content lost on migration"
+        );
+        assert!(migrated.contains("docker compose up -d"));
+        assert!(migrated.contains(RTK_PROFILE_VERSION_MARKER));
+        assert!(!migrated.contains("caveman-full"));
+        assert_eq!(migrated.matches("RTK Output Profile").count(), 1);
 
         fs::remove_dir_all(temp_dir).unwrap();
     }

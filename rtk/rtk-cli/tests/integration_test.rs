@@ -190,6 +190,55 @@ fn test_rtk_agents_lifecycle() {
 }
 
 #[test]
+fn test_rtk_init_installs_discoverable_claude_skill() {
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_millis();
+    let temp_dir = std::env::temp_dir().join(format!("rtk_init_claude_skill_{timestamp}"));
+    std::fs::create_dir_all(&temp_dir).unwrap();
+
+    let init_status = rtk_bin()
+        .current_dir(&temp_dir)
+        .env("HOME", &temp_dir)
+        .env("USERPROFILE", &temp_dir)
+        .args(["init", "--profile", "high"])
+        .status()
+        .expect("rtk not found");
+    assert!(init_status.success());
+
+    // The path Claude Code actually reads — the whole point of this test.
+    let skill = temp_dir.join(".claude/skills/caveman/SKILL.md");
+    assert!(skill.exists(), "caveman skill missing from .claude/skills/");
+    let skill_content = fs::read_to_string(&skill).unwrap();
+    assert!(skill_content.trim_start().starts_with("---"));
+    assert!(skill_content.contains("name: caveman"));
+
+    let claude_md = fs::read_to_string(temp_dir.join("CLAUDE.md")).unwrap();
+    assert!(claude_md.contains("caveman"));
+    assert!(
+        !claude_md.contains("caveman-full"),
+        "profile text must not cite the nonexistent caveman-full skill"
+    );
+
+    let doctor_out = rtk_bin()
+        .current_dir(&temp_dir)
+        .env("HOME", &temp_dir)
+        .env("USERPROFILE", &temp_dir)
+        .args(["doctor"])
+        .output()
+        .expect("rtk not found");
+    let doctor_str = String::from_utf8_lossy(&doctor_out.stdout);
+    assert!(doctor_str.contains("Caveman Skill"));
+    assert!(
+        !doctor_str.contains("Caveman Skill: ⚠️"),
+        "doctor should not warn about a skill it just installed: {doctor_str}"
+    );
+
+    std::fs::remove_dir_all(temp_dir).unwrap();
+}
+
+#[test]
 fn test_rtk_artifact_lifecycle() {
     let _lock = rtk_db::tracking::DB_TEST_LOCK.lock().unwrap();
     let timestamp = std::time::SystemTime::now()

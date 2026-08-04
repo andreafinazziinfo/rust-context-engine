@@ -55,6 +55,12 @@ rtk doctor
 
 `init` installs shell aliases and attempts PreToolUse hook setup. `doctor` should show mostly ✅; warnings link back here.
 
+Already ran `rtk init` before v2.4.2? Its `RTK Output Profile` block in `CLAUDE.md`/`copilot-instructions.md` is outdated (`rtk doctor` will say so) — refresh it in place without touching anything else you wrote in that file:
+
+```bash
+rtk init --profile high --force-profile
+```
+
 ## 3. Try the core loop
 
 ```bash
