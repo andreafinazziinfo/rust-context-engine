@@ -285,9 +285,11 @@ pub struct IndexStatus {
 
 pub fn get_index_status() -> Result<IndexStatus> {
     let conn = db::open_db()?;
-    let symbols_count: usize = conn.query_row("SELECT COUNT(*) FROM symbols", [], |r| r.get(0))?;
-    let edges_count: usize =
-        conn.query_row("SELECT COUNT(*) FROM dependencies", [], |r| r.get(0))?;
+    let symbols_count: usize =
+        conn.query_row("SELECT COUNT(*) FROM symbols", [], |r| r.get::<_, i64>(0))? as usize;
+    let edges_count: usize = conn.query_row("SELECT COUNT(*) FROM dependencies", [], |r| {
+        r.get::<_, i64>(0)
+    })? as usize;
     let last_indexed: Option<i64> = conn
         .query_row("SELECT MAX(last_indexed) FROM file_hashes", [], |r| {
             r.get(0)

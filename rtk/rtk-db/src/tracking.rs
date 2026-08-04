@@ -698,7 +698,7 @@ pub fn get_recent_logs(limit: usize) -> Result<Vec<CommandLog>> {
          FROM tracking ORDER BY id DESC LIMIT ?1"
     )?;
 
-    let rows = stmt.query_map(params![limit], |r| {
+    let rows = stmt.query_map(params![limit as i64], |r| {
         Ok(CommandLog {
             id: r.get(0)?,
             cmd: r.get(1)?,
