@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "RTK (Rust Context Engine) — Architecture",
+    "output": "rtk-architecture.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/andreafinazziinfo/ai-token-saver",
+      "revision": "85bfcd9c79ecd406fecca7af888d78ffc882129f"
+    },
+    "views": [
+      { "id": "intercept-path", "label": "Command interception", "focus": ["host_agent", "hook", "rtk_cli", "rtk_filters", "rtk_db"], "note": "Every Bash tool call is rewritten, filtered, and cached before the agent ever sees raw output." },
+      { "id": "other-consumers", "label": "Other rtk-db consumers", "focus": ["other_tools", "rtk_db"], "note": "Code graph, AST packing, and the MCP server all read/write the same local vault." }
+    ]
+  },
+  "components": [
+    { "id": "host_agent", "type": "external", "label": "AI Coding Agent", "sublabel": "Claude Code / Cursor / Windsurf", "pos": [20, 200], "size": [160, 70] },
+    { "id": "hook", "type": "backend", "label": "PreToolUse Hook", "sublabel": "hooks/rtk-rewrite.sh", "pos": [230, 200], "size": [170, 70], "sources": [{ "path": "hooks/rtk-rewrite.sh", "line": 1, "end_line": 9, "label": "PreToolUse:Bash rewrite hook" }] },
+    { "id": "rtk_cli", "type": "backend", "label": "rtk-cli", "sublabel": "entrypoint + command router", "pos": [450, 200], "size": [160, 70], "sources": [{ "path": "rtk/rtk-cli/Cargo.toml", "label": "entrypoint binary and command router CLI" }] },
+    { "id": "rtk_filters", "type": "backend", "label": "rtk-filters", "sublabel": "parser filters, strips noise", "pos": [660, 200], "size": [160, 70], "sources": [{ "path": "rtk/rtk-filters/Cargo.toml", "label": "pre-built parser filters for CLI output" }] },
+    { "id": "rtk_db", "type": "database", "label": "rtk-db", "sublabel": "SQLite FTS5 + DLP redaction", "pos": [870, 200], "size": [170, 70], "sources": [{ "path": "rtk/rtk-db/Cargo.toml", "label": "SQLite FTS5 context memory, DLP, config" }] },
+    { "id": "other_tools", "type": "backend", "label": "rtk-index · rtk-pack · rtk-mcp", "sublabel": "code graph, AST skeletons, MCP server", "pos": [660, 400], "size": [380, 70], "sources": [{ "path": "rtk/rtk-index/Cargo.toml", "label": "code graph, symbols, blast radius" }, { "path": "rtk/rtk-pack/Cargo.toml", "label": "AST skeleton packing" }, { "path": "rtk/rtk-mcp/Cargo.toml", "label": "MCP server for local context tools" }] }
+  ],
+  "connections": [
+    { "id": "agent-to-hook", "from": "host_agent", "to": "hook", "label": "Bash tool call", "variant": "emphasis", "labelAt": [205, 340] },
+    { "id": "hook-to-cli", "from": "hook", "to": "rtk_cli", "label": "rewrites: git status → rtk git status", "labelAt": [425, 340] },
+    { "id": "cli-to-filters", "from": "rtk_cli", "to": "rtk_filters", "label": "runs, parses output", "labelAt": [635, 340] },
+    { "id": "filters-to-db", "from": "rtk_filters", "to": "rtk_db", "label": "caches raw + signal", "labelAt": [780, 340] },
+    { "id": "db-to-cli", "from": "rtk_db", "to": "rtk_cli", "label": "filtered result", "fromSide": "top", "toSide": "top" },
+    { "id": "cli-to-agent", "from": "rtk_cli", "to": "host_agent", "label": "pure signal, ~82% fewer tokens", "fromSide": "bottom", "toSide": "bottom" },
+    { "id": "other-to-db", "from": "other_tools", "to": "rtk_db", "label": "reads/writes same vault", "variant": "dashed", "fromSide": "top", "toSide": "bottom" }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "Three-phase pipeline (per README)", "items": ["Input Virtualization: strips noisy command output before it reaches the agent", "Reasoning & Memory: rtk think / rtk memory persist state in the same FTS5 vault", "Output Autonomy: caveman/ponytail personas compress agent responses"] },
+    { "dot": "emerald", "title": "One local vault, many consumers", "items": ["rtk-db is the single source of truth: filtered command output, code index, AST packs, MCP reads all land there", "6-crate Cargo workspace: rtk-cli, rtk-filters, rtk-db, rtk-pack, rtk-index, rtk-mcp"] },
+    { "dot": "amber", "title": "Benchmarked", "items": ["Avg 81.8% token savings across verified scenarios (tiktoken cl100k_base)", "Real commands run against the RTK codebase itself, not just simulated"] }
+  ]
+}
