@@ -1,5 +1,6 @@
 use anyhow::{Context, Result};
 use rtk_db::{config, dlp, tracking};
+use std::io::IsTerminal;
 
 use crate::{distiller, plugins};
 
@@ -11,10 +12,53 @@ pub enum FilterMode {
     PluginFilter(plugins::Plugin),
 }
 
+/// Join stderr and stdout for `Combined` mode without inserting a spurious
+/// blank line: a bare `format!("{stderr}\n{stdout}")` adds a separator even
+/// when one side is empty or already newline-terminated, silently changing
+/// the line count a downstream parser sees (the same #77 failure class,
+/// found while sweeping every wrapped command for it in REL-2).
+fn join_streams(stderr: &str, stdout: &str) -> String {
+    if stderr.is_empty() {
+        stdout.to_string()
+    } else if stdout.is_empty() {
+        stderr.to_string()
+    } else if stderr.ends_with('\n') {
+        format!("{stderr}{stdout}")
+    } else {
+        format!("{stderr}\n{stdout}")
+    }
+}
+
 fn post_process_filter_output(text: &str, cmd: &str) -> String {
     let text = config::apply_regex_filters(text);
     let profile = config::get_config().get_profile_for_cmd(cmd);
     config::apply_profile_settings(&text, &profile)
+}
+
+/// Compress `raw` for display, unless the destination stream isn't an
+/// interactive terminal (piped, redirected, or captured by a calling
+/// process/agent). Every compression step here (per-command filters,
+/// `post_process_filter_output`'s profile/regex rules, and `distiller`) can
+/// drop or collapse lines to save tokens for a human/LLM reading a terminal
+/// directly — but a downstream parser (`wc -l`, `grep -c`, JSON parsing, or
+/// another command substituting this output into its own argv) has no way to
+/// know that, and gets a plausible-but-wrong answer instead of an error
+/// (#77). Once nothing is watching the terminal, correctness has to win over
+/// compression, so we return `raw` untouched (still DLP-redacted).
+///
+/// Returns `(displayed, raw_redacted)`.
+fn compress_for_display(
+    raw: &str,
+    cmd_label: &str,
+    is_tty: bool,
+    compress: impl FnOnce(&str) -> String,
+) -> (String, String) {
+    let raw_redacted = dlp::redact_with_source(raw, cmd_label);
+    if !is_tty {
+        return (raw_redacted.clone(), raw_redacted);
+    }
+    let compressed_redacted = dlp::redact_with_source(&compress(raw), cmd_label);
+    (compressed_redacted, raw_redacted)
 }
 
 pub fn execute_with_filter(bin: &str, args: &[String], mode: FilterMode) -> Result<()> {
@@ -34,117 +78,110 @@ pub fn execute_with_filter(bin: &str, args: &[String], mode: FilterMode) -> Resu
         format!("{bin} {}", args.join(" "))
     };
 
+    let stdout_is_tty = std::io::stdout().is_terminal();
+    let stderr_is_tty = std::io::stderr().is_terminal();
+
     let (mut out_print, mut err_print, raw_db, filtered_db) = match mode {
         FilterMode::Stdout(filter) => {
-            let filtered = post_process_filter_output(&filter(&stdout), &cmd_label);
-            let r_filtered = dlp::redact_with_source(&filtered, &cmd_label);
-            let r_stdout = dlp::redact_with_source(&stdout, &cmd_label);
+            let (displayed, r_stdout) =
+                compress_for_display(&stdout, &cmd_label, stdout_is_tty, |s| {
+                    post_process_filter_output(&filter(s), &cmd_label)
+                });
             (
-                r_filtered.clone(),
+                displayed.clone(),
                 dlp::redact_with_source(&stderr, &cmd_label),
-                r_stdout.clone(),
-                r_filtered,
+                r_stdout,
+                displayed,
             )
         }
         FilterMode::Stderr(filter) => {
-            let filtered = post_process_filter_output(&filter(&stderr), &cmd_label);
-            let r_filtered = dlp::redact_with_source(&filtered, &cmd_label);
-            let r_stderr = dlp::redact_with_source(&stderr, &cmd_label);
+            let (displayed, r_stderr) =
+                compress_for_display(&stderr, &cmd_label, stderr_is_tty, |s| {
+                    post_process_filter_output(&filter(s), &cmd_label)
+                });
             (
                 dlp::redact_with_source(&stdout, &cmd_label),
-                r_filtered.clone(),
-                r_stderr.clone(),
-                r_filtered,
+                displayed.clone(),
+                r_stderr,
+                displayed,
             )
         }
         FilterMode::Combined(filter) => {
-            let combined = format!("{stderr}\n{stdout}");
-            let filtered = post_process_filter_output(&filter(&combined), &cmd_label);
-            let r_filtered = dlp::redact_with_source(&filtered, &cmd_label);
-            let r_combined = dlp::redact_with_source(&combined, &cmd_label);
-            (
-                r_filtered.clone(),
-                String::new(),
-                r_combined.clone(),
-                r_filtered,
-            )
+            let combined = join_streams(&stderr, &stdout);
+            let (displayed, r_combined) =
+                compress_for_display(&combined, &cmd_label, stdout_is_tty, |s| {
+                    post_process_filter_output(&filter(s), &cmd_label)
+                });
+            (displayed.clone(), String::new(), r_combined, displayed)
         }
         FilterMode::Distilled => {
-            let d_stdout = distiller::distill(&stdout, None);
-            let d_stderr = distiller::distill(&stderr, None);
-            let r_d_out = dlp::redact_with_source(&d_stdout, &cmd_label);
-            let r_d_err = dlp::redact_with_source(&d_stderr, &cmd_label);
             let r_comb = dlp::redact_with_source(
                 &format!("STDOUT:\n{stdout}\nSTDERR:\n{stderr}"),
                 &cmd_label,
             );
-            (
-                r_d_out.clone(),
-                r_d_err.clone(),
-                r_comb,
-                format!("{r_d_out}\n{r_d_err}"),
-            )
+            let (out, _) = compress_for_display(&stdout, &cmd_label, stdout_is_tty, |s| {
+                distiller::distill(s, None)
+            });
+            let (err, _) = compress_for_display(&stderr, &cmd_label, stderr_is_tty, |s| {
+                distiller::distill(s, None)
+            });
+            (out.clone(), err.clone(), r_comb, format!("{out}\n{err}"))
         }
         FilterMode::PluginFilter(ref plugin) => {
             let capture_mode = plugin.filter_mode.as_deref().unwrap_or("stdout");
             match capture_mode {
                 "stderr" => {
-                    let filtered = post_process_filter_output(
-                        &plugins::filter_plugin(&stderr, plugin),
-                        &cmd_label,
-                    );
-                    let r_filtered = dlp::redact_with_source(&filtered, &cmd_label);
-                    let r_stderr = dlp::redact_with_source(&stderr, &cmd_label);
+                    let (displayed, r_stderr) =
+                        compress_for_display(&stderr, &cmd_label, stderr_is_tty, |s| {
+                            post_process_filter_output(
+                                &plugins::filter_plugin(s, plugin),
+                                &cmd_label,
+                            )
+                        });
                     (
                         dlp::redact_with_source(&stdout, &cmd_label),
-                        r_filtered.clone(),
-                        r_stderr.clone(),
-                        r_filtered,
+                        displayed.clone(),
+                        r_stderr,
+                        displayed,
                     )
                 }
                 "combined" => {
-                    let combined = format!("{stderr}\n{stdout}");
-                    let filtered = post_process_filter_output(
-                        &plugins::filter_plugin(&combined, plugin),
-                        &cmd_label,
-                    );
-                    let r_filtered = dlp::redact_with_source(&filtered, &cmd_label);
-                    let r_combined = dlp::redact_with_source(&combined, &cmd_label);
-                    (
-                        r_filtered.clone(),
-                        String::new(),
-                        r_combined.clone(),
-                        r_filtered,
-                    )
+                    let combined = join_streams(&stderr, &stdout);
+                    let (displayed, r_combined) =
+                        compress_for_display(&combined, &cmd_label, stdout_is_tty, |s| {
+                            post_process_filter_output(
+                                &plugins::filter_plugin(s, plugin),
+                                &cmd_label,
+                            )
+                        });
+                    (displayed.clone(), String::new(), r_combined, displayed)
                 }
                 "distill" => {
-                    let d_stdout = distiller::distill(&stdout, None);
-                    let d_stderr = distiller::distill(&stderr, None);
-                    let r_d_out = dlp::redact_with_source(&d_stdout, &cmd_label);
-                    let r_d_err = dlp::redact_with_source(&d_stderr, &cmd_label);
                     let r_comb = dlp::redact_with_source(
                         &format!("STDOUT:\n{stdout}\nSTDERR:\n{stderr}"),
                         &cmd_label,
                     );
-                    (
-                        r_d_out.clone(),
-                        r_d_err.clone(),
-                        r_comb,
-                        format!("{r_d_out}\n{r_d_err}"),
-                    )
+                    let (out, _) = compress_for_display(&stdout, &cmd_label, stdout_is_tty, |s| {
+                        distiller::distill(s, None)
+                    });
+                    let (err, _) = compress_for_display(&stderr, &cmd_label, stderr_is_tty, |s| {
+                        distiller::distill(s, None)
+                    });
+                    (out.clone(), err.clone(), r_comb, format!("{out}\n{err}"))
                 }
                 _ => {
-                    let filtered = post_process_filter_output(
-                        &plugins::filter_plugin(&stdout, plugin),
-                        &cmd_label,
-                    );
-                    let r_filtered = dlp::redact_with_source(&filtered, &cmd_label);
-                    let r_stdout = dlp::redact_with_source(&stdout, &cmd_label);
+                    let (displayed, r_stdout) =
+                        compress_for_display(&stdout, &cmd_label, stdout_is_tty, |s| {
+                            post_process_filter_output(
+                                &plugins::filter_plugin(s, plugin),
+                                &cmd_label,
+                            )
+                        });
                     (
-                        r_filtered.clone(),
+                        displayed.clone(),
                         dlp::redact_with_source(&stderr, &cmd_label),
-                        r_stdout.clone(),
-                        r_filtered,
+                        r_stdout,
+                        displayed,
                     )
                 }
             }
@@ -159,11 +196,19 @@ pub fn execute_with_filter(bin: &str, args: &[String], mode: FilterMode) -> Resu
         Some(duration_ms),
     ) {
         Ok(log_id) => {
+            // These informational markers are only meaningful for a human at
+            // an interactive terminal. Appending them to a piped/captured
+            // stream corrupts anything treating that stream as structured
+            // data (the same #77 failure mode) — and if that captured text is
+            // later reused verbatim as an argument to another rtk-wrapped
+            // command (e.g. via shell `$(...)` substitution), the marker text
+            // itself ends up embedded in the *next* command's argv, which is
+            // the cmd-corruption anomaly tracked under REL-3.
             if filtered_db.len() < raw_db.len() && !filtered_db.trim().is_empty() {
                 let msg = format!("\n[Full output cached. Access with: rtk show-log {log_id}]\n");
-                if !out_print.trim().is_empty() {
+                if !out_print.trim().is_empty() && stdout_is_tty {
                     out_print.push_str(&msg);
-                } else if !err_print.trim().is_empty() {
+                } else if !err_print.trim().is_empty() && stderr_is_tty {
                     err_print.push_str(&msg);
                 }
             }
@@ -172,10 +217,10 @@ pub fn execute_with_filter(bin: &str, args: &[String], mode: FilterMode) -> Resu
     }
 
     if let Some(warning) = tracking::check_autonomy(&filtered_db) {
-        if !out_print.trim().is_empty() {
+        if !out_print.trim().is_empty() && stdout_is_tty {
             out_print.push_str(warning);
             out_print.push('\n');
-        } else if !err_print.trim().is_empty() {
+        } else if !err_print.trim().is_empty() && stderr_is_tty {
             err_print.push_str(warning);
             err_print.push('\n');
         }
@@ -208,4 +253,19 @@ pub fn run_filtered_combined(bin: &str, args: &[String], filter: fn(&str) -> Str
 
 pub fn run_distilled(bin: &str, args: &[String]) -> Result<()> {
     execute_with_filter(bin, args, FilterMode::Distilled)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn join_streams_no_spurious_blank_line() {
+        // stderr already newline-terminated: must not gain an extra blank
+        // line at the seam (found sweeping `npm install`/`cargo test` for #77).
+        assert_eq!(join_streams("warn\n", "\nok\n"), "warn\n\nok\n");
+        assert_eq!(join_streams("warn", "ok\n"), "warn\nok\n");
+        assert_eq!(join_streams("", "ok\n"), "ok\n");
+        assert_eq!(join_streams("warn\n", ""), "warn\n");
+    }
 }

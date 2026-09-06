@@ -654,6 +654,67 @@ fn test_config_deny_add_blocks_rewrite() {
     std::fs::remove_dir_all(temp_dir).unwrap();
 }
 
+/// REL-1 (issue #77): `ls -1 <dir>` piped into a counting tool must report the
+/// real entry count, not a plausible-looking count of prose-compressed lines.
+/// `.output()` captures stdout via a pipe — exactly how a shell `| wc -l` and
+/// how an agent harness subprocess-capturing rtk's output both consume it.
+#[test]
+fn ls_filter_piped_reports_true_entry_count_issue_77() {
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_millis();
+    let temp_dir = std::env::temp_dir().join(format!("rtk_ls77_{timestamp}"));
+    std::fs::create_dir_all(&temp_dir).unwrap();
+    const REAL_ENTRY_COUNT: usize = 36;
+    for i in 0..REAL_ENTRY_COUNT {
+        std::fs::write(temp_dir.join(format!("file{i}.txt")), "").unwrap();
+    }
+
+    let out = rtk_bin()
+        .args(["ls", "-1", temp_dir.to_str().unwrap()])
+        .output()
+        .expect("rtk not found");
+    assert!(out.status.success());
+    let stdout = String::from_utf8_lossy(&out.stdout);
+
+    assert!(
+        !stdout.contains("more entries"),
+        "piped ls output must never be silently collapsed (#77): {stdout}"
+    );
+    let line_count = stdout.lines().filter(|l| !l.trim().is_empty()).count();
+    assert_eq!(
+        line_count, REAL_ENTRY_COUNT,
+        "wc -l-equivalent count must match the real entry count, got {line_count} in: {stdout}"
+    );
+
+    std::fs::remove_dir_all(temp_dir).unwrap();
+}
+
+/// REL-3: the "[Full output cached...]" / autonomy-warning markers are
+/// informational text for a human at a terminal. Appended to a piped stream,
+/// they are exactly the kind of extra content that — if captured via shell
+/// `$(...)` and reused as an argument to a later rtk-wrapped command — ends up
+/// embedded in that *next* command's argv (the cmd-corruption anomaly this
+/// task investigated). They must never appear when the destination isn't a
+/// real terminal, regardless of which wrapped command produced them.
+#[test]
+fn wrapped_output_never_embeds_cache_marker_when_piped() {
+    let out = rtk_bin()
+        .args(["git", "log", "--oneline", "-50"])
+        .output()
+        .expect("rtk not found");
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        !stdout.contains("Full output cached"),
+        "cache marker leaked into piped stdout: {stdout}"
+    );
+    assert!(
+        !stdout.contains("rtk show-log"),
+        "show-log hint leaked into piped stdout: {stdout}"
+    );
+}
+
 #[test]
 fn test_dlp_jwt_redacted_via_pack_cli() {
     let timestamp = std::time::SystemTime::now()
