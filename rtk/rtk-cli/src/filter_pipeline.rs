@@ -53,12 +53,39 @@ fn compress_for_display(
     is_tty: bool,
     compress: impl FnOnce(&str) -> String,
 ) -> (String, String) {
-    let raw_redacted = dlp::redact_with_source(raw, cmd_label);
     if !is_tty {
+        // User-configured secret-stripping rules (`rtk config filter add`) are
+        // a safety control, like DLP redaction below — not a token-savings
+        // heuristic — so they must still run even though compression itself
+        // is skipped here. Only `apply_profile_settings` (line caps, comment
+        // stripping, json_only) and the per-command `compress` closure are
+        // skipped: those are the human-readability steps that can silently
+        // change a piped line count (#77).
+        let safety_filtered = config::apply_regex_filters(raw);
+        let raw_redacted = dlp::redact_with_source(&safety_filtered, cmd_label);
         return (raw_redacted.clone(), raw_redacted);
     }
+    let raw_redacted = dlp::redact_with_source(raw, cmd_label);
     let compressed_redacted = dlp::redact_with_source(&compress(raw), cmd_label);
     (compressed_redacted, raw_redacted)
+}
+
+/// Append `marker` to whichever of `out_print`/`err_print` is the primary
+/// non-empty stream — but only if *that* stream's destination is a real
+/// terminal. Centralizes the tty guard so a future informational marker
+/// can't be added without it (see the module doc for why the guard exists).
+fn append_marker_if_tty(
+    out_print: &mut String,
+    err_print: &mut String,
+    stdout_is_tty: bool,
+    stderr_is_tty: bool,
+    marker: &str,
+) {
+    if !out_print.trim().is_empty() && stdout_is_tty {
+        out_print.push_str(marker);
+    } else if !err_print.trim().is_empty() && stderr_is_tty {
+        err_print.push_str(marker);
+    }
 }
 
 pub fn execute_with_filter(bin: &str, args: &[String], mode: FilterMode) -> Result<()> {
@@ -206,24 +233,27 @@ pub fn execute_with_filter(bin: &str, args: &[String], mode: FilterMode) -> Resu
             // the cmd-corruption anomaly tracked under REL-3.
             if filtered_db.len() < raw_db.len() && !filtered_db.trim().is_empty() {
                 let msg = format!("\n[Full output cached. Access with: rtk show-log {log_id}]\n");
-                if !out_print.trim().is_empty() && stdout_is_tty {
-                    out_print.push_str(&msg);
-                } else if !err_print.trim().is_empty() && stderr_is_tty {
-                    err_print.push_str(&msg);
-                }
+                append_marker_if_tty(
+                    &mut out_print,
+                    &mut err_print,
+                    stdout_is_tty,
+                    stderr_is_tty,
+                    &msg,
+                );
             }
         }
         Err(e) => eprintln!("rtk: tracking warning: {e}"),
     }
 
     if let Some(warning) = tracking::check_autonomy(&filtered_db) {
-        if !out_print.trim().is_empty() && stdout_is_tty {
-            out_print.push_str(warning);
-            out_print.push('\n');
-        } else if !err_print.trim().is_empty() && stderr_is_tty {
-            err_print.push_str(warning);
-            err_print.push('\n');
-        }
+        let msg = format!("{warning}\n");
+        append_marker_if_tty(
+            &mut out_print,
+            &mut err_print,
+            stdout_is_tty,
+            stderr_is_tty,
+            &msg,
+        );
     }
 
     if !out_print.is_empty() {

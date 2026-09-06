@@ -63,6 +63,16 @@ Fix (un solo punto, `filter_pipeline.rs`):
 
 Questo copre meccanicamente REL-1 e l'intero sweep REL-2 (stesso codice per tutti i comandi), e spiega/risolve REL-3 (vedi sotto) come conseguenza diretta, non come fix separato.
 
+### Note dalla review (`/code-review high`) e trade-off accettato
+
+Una review dedicata sul diff ha trovato e fatto correggere due bug reali nella stessa famiglia, oltre a un miglioramento di manutenibilità:
+
+- I filtri regex custom (`rtk filter add --pattern ... --action strip|collapse`) sono un controllo di sicurezza scelto dall'utente, non un'euristica di compressione — venivano saltati insieme al resto quando lo stream non era una TTY, esattamente il canale (agente/pipe) dove un segreto ha più probabilità di finire in un log. Corretto: ora girano sempre (come la redazione DLP), indipendentemente dal terminale. Test aggiunto: `test_custom_regex_filter_still_applies_when_piped`.
+- La redazione DLP delle chiavi private (`dlp.rs`) collassava un blocco PEM multi-riga in un'unica riga `[REDACTED_PRIVATE_KEY]`, cambiando il conteggio righe di qualunque output piped che contenesse per caso una chiave privata — la stessa classe di bug di #77, sul path pensato per garantirne la correttezza. Corretto: il numero di newline del blocco originale viene preservato nel replacement. Test aggiunto: `test_redact_private_key_preserves_line_count`.
+- Duplicazione minore della guardia tty sui due punti di append (annotazione cache + warning di autonomia): accorpata in `append_marker_if_tty()`.
+
+La review ha inoltre segnalato che, sul percorso non-TTY, `filtered_db == raw_db` azzera la metrica "token risparmiati" per ogni invocazione non interattiva (il caso d'uso reale prevalente, cioè esattamente l'automazione/harness agente). Questo **non è un difetto**: è la conseguenza diretta e onesta della scelta di design di questo piano — se la compressione non viene applicata, non ci sono token risparmiati da dichiarare, e la metrica precedente (che continuava a contare "risparmi" su un output che in realtà veniva già mostrato corrotto quando piped) era quella fuorviante. Non è stata reintrodotta compressione fittizia solo per gonfiare la statistica. Effetto collaterale noto e accettato, non nascosto: `rtk stats`/`rtk audit` mostreranno risparmi vicini a zero per l'uso non interattivo dopo questo fix.
+
 ### REL-1 — prima/dopo (repro esatto dell'issue #77)
 
 Ambiente: directory con 36 voci reali, `rtk` invocato come sottoprocesso con stdout catturato via pipe (`.output()` / `$(...)` — esattamente come lo cattura un harness agente).

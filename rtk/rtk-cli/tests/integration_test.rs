@@ -715,6 +715,56 @@ fn wrapped_output_never_embeds_cache_marker_when_piped() {
     );
 }
 
+/// A custom `rtk filter add` secret-stripping rule is a safety control, like
+/// built-in DLP redaction — it must still run on piped/captured output even
+/// though the human-readability compression step is skipped there (#77).
+#[test]
+fn test_custom_regex_filter_still_applies_when_piped() {
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_millis();
+    let temp_dir = std::env::temp_dir().join(format!("rtk_regex_filter_piped_{timestamp}"));
+    std::fs::create_dir_all(&temp_dir).unwrap();
+    std::fs::write(temp_dir.join("secret_token=ABC123XYZ.txt"), "").unwrap();
+
+    let add_out = rtk_bin()
+        .env("HOME", &temp_dir)
+        .env("USERPROFILE", &temp_dir)
+        .args([
+            "filter",
+            "add",
+            "--pattern",
+            "secret_token=[a-zA-Z0-9]+",
+            "--action",
+            "strip",
+        ])
+        .output()
+        .expect("rtk not found");
+    assert!(
+        add_out.status.success(),
+        "filter add failed: {}",
+        String::from_utf8_lossy(&add_out.stderr)
+    );
+
+    // `.output()` captures stdout via a pipe — non-interactive, the same path
+    // this test guards against skipping the safety rule on.
+    let ls_out = rtk_bin()
+        .env("HOME", &temp_dir)
+        .env("USERPROFILE", &temp_dir)
+        .args(["ls", "-1", temp_dir.to_str().unwrap()])
+        .output()
+        .expect("rtk not found");
+    assert!(ls_out.status.success());
+    let stdout = String::from_utf8_lossy(&ls_out.stdout);
+    assert!(
+        !stdout.contains("secret_token=ABC123XYZ"),
+        "custom regex filter must still strip secrets on piped output: {stdout}"
+    );
+
+    std::fs::remove_dir_all(temp_dir).unwrap();
+}
+
 #[test]
 fn test_dlp_jwt_redacted_via_pack_cli() {
     let timestamp = std::time::SystemTime::now()
