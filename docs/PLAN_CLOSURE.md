@@ -6,7 +6,7 @@
 | **Obiettivo** | Considerare RTK **pronto all'uso quotidiano**; niente nuove feature finché non emerge feedback reale |
 | **Aggiornato** | 2026-06-23 |
 
-Precedente: [PLAN_NOW.md](./PLAN_NOW.md) (✅) · Roadmap: [ROADMAP.md](./ROADMAP.md)
+Precedente: [PLAN_NOW.md](./PLAN_NOW.md) (✅) · Roadmap: [ROADMAP.md](./ROADMAP.md) · Successivo (2026-09, il momento "misura → poi decidi" previsto sotto è arrivato): [PLAN_RELIABILITY_2026-09.md](./PLAN_RELIABILITY_2026-09.md)
 
 ---
 
