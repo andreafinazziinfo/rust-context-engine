@@ -479,14 +479,15 @@ To ensure complete project portability and clean namespace isolation, RTK consol
 > [!NOTE]
 > This section is specifically written for AI Coding Assistants to read and follow. If you are an AI agent, you MUST follow these guidelines.
 
-1. **Intercepted Commands**: Running standard tools (e.g., `pytest`, `cargo test`) yields filtered outputs. If a log is truncated, a cache note appears. **DO NOT re-run the command** to view failures; instead, run `rtk show-log <id>` to retrieve the raw database record.
-2. **Context Packaging**: DO NOT execute `cat` on many files. Use `rtk pack . --strip` to read directories. Pass `--limit <max_tokens>` to prevent overflows. Use `--skeleton` to collapse function bodies into API signatures.
-3. **Long-Term State Memory**: Use `rtk memory set/get` to save project-specific settings (like open ports, DB URLs, architecture decisions) across chat sessions. Use `rtk memory search` for semantic retrieval.
-4. **Hidden Chain-of-Thought**: When solving complex logic, **DO NOT write long reasoning in the chat**. Pipe it to `rtk think` (e.g., `cat << 'EOF' | rtk think`) to save output tokens, and only print a brief summary to the user.
-5. **Stale Context Rule**: If you modify the project's architecture, you MUST proactively overwrite old rules using `rtk memory set <key> <val>` to prevent stale RAG context hallucinations.
-6. **DLP Awareness**: RTK automatically redacts API keys, JWT tokens, PEM private keys, and database credentials from all outputs. If you see `[REDACTED_API_KEY]` or `[REDACTED_SECRET]`, do NOT attempt to reconstruct or guess the original value.
-7. **Guardrails**: RTK blocks dangerous commands like `rm -rf /`, `git push --force`, `git reset --hard`. If your command is denied, respect the guardrail and use a safer alternative.
-8. **Behavioral Rules**: RTK enforces *Ponytail* and *Caveman* styles. Implement the minimal amount of code possible. **DO NOT write boilerplate, unrequested features, or restructure folders.** Keep diffs extremely narrow.
+1. **Intercepted Commands**: Running standard tools (e.g., `pytest`, `cargo test`) yields filtered outputs. If a log is truncated, a cache note appears **on stderr**. **DO NOT re-run the command** to view failures; instead, run `rtk show-log <id>` to retrieve the raw database record.
+2. **Composing output with another tool (`| wc -l`, `grep -c`, JSON parsing, or reusing captured output as another command's argument)**: the compressed summary (e.g. `... and N more entries ...`) is safe for *you* to read, but NOT safe to count or parse — a counting tool sees the summary line, not the real data, and gets a plausible-but-wrong answer. Set `RTK_RAW=1` for that specific invocation to get the untruncated original text instead, e.g. `RTK_RAW=1 rtk ls -1 dir | wc -l`.
+3. **Context Packaging**: DO NOT execute `cat` on many files. Use `rtk pack . --strip` to read directories. Pass `--limit <max_tokens>` to prevent overflows. Use `--skeleton` to collapse function bodies into API signatures.
+4. **Long-Term State Memory**: Use `rtk memory set/get` to save project-specific settings (like open ports, DB URLs, architecture decisions) across chat sessions. Use `rtk memory search` for semantic retrieval.
+5. **Hidden Chain-of-Thought**: When solving complex logic, **DO NOT write long reasoning in the chat**. Pipe it to `rtk think` (e.g., `cat << 'EOF' | rtk think`) to save output tokens, and only print a brief summary to the user.
+6. **Stale Context Rule**: If you modify the project's architecture, you MUST proactively overwrite old rules using `rtk memory set <key> <val>` to prevent stale RAG context hallucinations.
+7. **DLP Awareness**: RTK automatically redacts API keys, JWT tokens, PEM private keys, and database credentials from all outputs. If you see `[REDACTED_API_KEY]` or `[REDACTED_SECRET]`, do NOT attempt to reconstruct or guess the original value.
+8. **Guardrails**: RTK blocks dangerous commands like `rm -rf /`, `git push --force`, `git reset --hard`. If your command is denied, respect the guardrail and use a safer alternative.
+9. **Behavioral Rules**: RTK enforces *Ponytail* and *Caveman* styles. Implement the minimal amount of code possible. **DO NOT write boilerplate, unrequested features, or restructure folders.** Keep diffs extremely narrow.
 
 ---
 
@@ -497,6 +498,13 @@ To ensure complete project portability and clean namespace isolation, RTK consol
 *   **PreToolUse Hook Support**: Transparent rewriting via `PreToolUse` hook requires support from the AI CLI client (such as Claude Code). If you run another client, ensure you register the suggestion hook in its configuration.
 *   **Hook exit codes**: `rtk rewrite` returns `0` = rewrite found, `1` = passthrough, `2` = denied, `3` = ask user. If hooks silently fail, run `rtk doctor` and verify `hooks/rtk-rewrite.sh` path is absolute in `settings.json`.
 *   **Hook timeout**: Claude Code default hook timeout is 5s; increase if rewrite runs on slow disks.
+*   **Compressed output is not safe to count or parse**: RTK's per-command filters (and `apply_profile_settings`) can collapse a long, uniform tail into a summary line (e.g. `... and N more entries ...`) to save tokens for a direct reader. If you (the agent) then pipe that output into a counting/parsing tool, or reuse it as another command's argument, you'll get a plausible-but-wrong answer instead of an error — RTK has no way to tell "a human/agent is reading this" apart from "a program is about to parse this," since both look identical at the OS level (issue #77). Set `RTK_RAW=1` for that specific invocation whenever you're about to compose its output with something else.
+
+    <details>
+    <summary>Why is this the agent's responsibility instead of automatic?</summary>
+
+    An earlier version of this fix tried to detect this automatically by checking whether stdout was an interactive terminal, and fell back to raw output whenever it wasn't. That broke compression for the *primary* use case this whole tool exists for: when an AI harness (Claude Code's Bash tool, or any agent runtime) captures a wrapped command's output, that capture is *also* not a terminal — indistinguishable, at the OS level, from `| wc -l`. Detecting non-interactivity can't tell "an agent that reads prose summaries fine" apart from "a program that will misparse them." `RTK_RAW=1` puts that decision back where it can actually be made correctly: by whoever is about to compose the output.
+    </details>
 
 ---
 

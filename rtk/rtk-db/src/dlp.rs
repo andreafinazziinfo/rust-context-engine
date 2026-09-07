@@ -81,12 +81,16 @@ pub fn redact_with_source(text: &str, source: &str) -> String {
         Regex::new(r"\b[a-zA-Z0-9\+]+://[a-zA-Z0-9_\-\.]+:[^@\s]+@[a-zA-Z0-9_\-\.]+").unwrap()
     });
 
-    // 1. First redact specific large patterns (private keys)
+    // 1. First redact specific large patterns (private keys). Preserve the
+    // matched span's line count in the replacement: collapsing an N-line PEM
+    // block to a single line silently changes the line count of anything
+    // downstream counting/parsing this output (the same failure class as #77).
     let mut redacted = PRIVATE_KEY
         .replace_all(text, |caps: &regex::Captures| {
             let matched = caps.get(0).unwrap().as_str();
             write_audit_log(source, "Private Key", matched);
-            "[REDACTED_PRIVATE_KEY]".to_string()
+            let extra_lines = matched.lines().count().saturating_sub(1);
+            format!("[REDACTED_PRIVATE_KEY]{}", "\n".repeat(extra_lines))
         })
         .into_owned();
 
@@ -212,6 +216,16 @@ mod tests {
         let output = redact(input);
         assert!(output.contains("[REDACTED_PRIVATE_KEY]"));
         assert!(!output.contains("MIIEvgI"));
+    }
+
+    #[test]
+    fn test_redact_private_key_preserves_line_count() {
+        // Collapsing an N-line PEM block into one line silently changes the
+        // line count of anything downstream counting/parsing this output —
+        // the same failure class as issue #77.
+        let input = "hello\n-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQC6...\n-----END PRIVATE KEY-----\nworld";
+        let output = redact(input);
+        assert_eq!(output.lines().count(), input.lines().count());
     }
 
     #[test]
