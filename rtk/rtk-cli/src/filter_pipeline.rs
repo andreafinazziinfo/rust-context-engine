@@ -1,6 +1,5 @@
 use anyhow::{Context, Result};
 use rtk_db::{config, dlp, tracking};
-use std::io::IsTerminal;
 
 use crate::{distiller, plugins};
 
@@ -35,32 +34,35 @@ fn post_process_filter_output(text: &str, cmd: &str) -> String {
     config::apply_profile_settings(&text, &profile)
 }
 
-/// Compress `raw` for display, unless the destination stream isn't an
-/// interactive terminal (piped, redirected, or captured by a calling
-/// process/agent). Every compression step here (per-command filters,
-/// `post_process_filter_output`'s profile/regex rules, and `distiller`) can
-/// drop or collapse lines to save tokens for a human/LLM reading a terminal
-/// directly — but a downstream parser (`wc -l`, `grep -c`, JSON parsing, or
-/// another command substituting this output into its own argv) has no way to
-/// know that, and gets a plausible-but-wrong answer instead of an error
-/// (#77). Once nothing is watching the terminal, correctness has to win over
-/// compression, so we return `raw` untouched (still DLP-redacted).
-///
-/// Returns `(displayed, raw_redacted)`.
+/// RTK exists to save an AI agent tokens: an agent reading a compressed
+/// summary directly (e.g. "...and 19 more entries...") handles it fine — it's
+/// prose, not data it's blindly counting. Compression only becomes unsafe
+/// once that summary is *composed*: piped into `wc -l`/`grep -c`/a parser, or
+/// reused as another command's argument. RTK can't reliably tell those two
+/// situations apart from the OS side (an agent capturing our output and a
+/// shell pipe both look like "not a terminal"), so instead of guessing we
+/// keep compression on by default and let the caller ask for the untruncated
+/// original with `RTK_RAW=1` for the specific invocation whose output will be
+/// composed with something else (#77).
+fn raw_requested() -> bool {
+    std::env::var_os("RTK_RAW").is_some()
+}
+
+/// Compress `raw` for display, unless `RTK_RAW=1` asked for the untruncated
+/// original (see `raw_requested`). Returns `(displayed, raw_redacted)`.
 fn compress_for_display(
     raw: &str,
     cmd_label: &str,
-    is_tty: bool,
+    raw_requested: bool,
     compress: impl FnOnce(&str) -> String,
 ) -> (String, String) {
-    if !is_tty {
-        // User-configured secret-stripping rules (`rtk config filter add`) are
-        // a safety control, like DLP redaction below — not a token-savings
-        // heuristic — so they must still run even though compression itself
-        // is skipped here. Only `apply_profile_settings` (line caps, comment
-        // stripping, json_only) and the per-command `compress` closure are
-        // skipped: those are the human-readability steps that can silently
-        // change a piped line count (#77).
+    if raw_requested {
+        // User-configured secret-stripping rules (`rtk filter add`) are a
+        // safety control, like DLP redaction below — not a token-savings
+        // heuristic — so they still run even with compression skipped. Only
+        // `apply_profile_settings` (line caps, comment stripping, json_only)
+        // and the per-command `compress` closure are skipped: those are the
+        // human-readability steps that can silently change a line count.
         let safety_filtered = config::apply_regex_filters(raw);
         let raw_redacted = dlp::redact_with_source(&safety_filtered, cmd_label);
         return (raw_redacted.clone(), raw_redacted);
@@ -68,24 +70,6 @@ fn compress_for_display(
     let raw_redacted = dlp::redact_with_source(raw, cmd_label);
     let compressed_redacted = dlp::redact_with_source(&compress(raw), cmd_label);
     (compressed_redacted, raw_redacted)
-}
-
-/// Append `marker` to whichever of `out_print`/`err_print` is the primary
-/// non-empty stream — but only if *that* stream's destination is a real
-/// terminal. Centralizes the tty guard so a future informational marker
-/// can't be added without it (see the module doc for why the guard exists).
-fn append_marker_if_tty(
-    out_print: &mut String,
-    err_print: &mut String,
-    stdout_is_tty: bool,
-    stderr_is_tty: bool,
-    marker: &str,
-) {
-    if !out_print.trim().is_empty() && stdout_is_tty {
-        out_print.push_str(marker);
-    } else if !err_print.trim().is_empty() && stderr_is_tty {
-        err_print.push_str(marker);
-    }
 }
 
 pub fn execute_with_filter(bin: &str, args: &[String], mode: FilterMode) -> Result<()> {
@@ -105,15 +89,13 @@ pub fn execute_with_filter(bin: &str, args: &[String], mode: FilterMode) -> Resu
         format!("{bin} {}", args.join(" "))
     };
 
-    let stdout_is_tty = std::io::stdout().is_terminal();
-    let stderr_is_tty = std::io::stderr().is_terminal();
+    let raw = raw_requested();
 
-    let (mut out_print, mut err_print, raw_db, filtered_db) = match mode {
+    let (out_print, err_print, raw_db, filtered_db) = match mode {
         FilterMode::Stdout(filter) => {
-            let (displayed, r_stdout) =
-                compress_for_display(&stdout, &cmd_label, stdout_is_tty, |s| {
-                    post_process_filter_output(&filter(s), &cmd_label)
-                });
+            let (displayed, r_stdout) = compress_for_display(&stdout, &cmd_label, raw, |s| {
+                post_process_filter_output(&filter(s), &cmd_label)
+            });
             (
                 displayed.clone(),
                 dlp::redact_with_source(&stderr, &cmd_label),
@@ -122,10 +104,9 @@ pub fn execute_with_filter(bin: &str, args: &[String], mode: FilterMode) -> Resu
             )
         }
         FilterMode::Stderr(filter) => {
-            let (displayed, r_stderr) =
-                compress_for_display(&stderr, &cmd_label, stderr_is_tty, |s| {
-                    post_process_filter_output(&filter(s), &cmd_label)
-                });
+            let (displayed, r_stderr) = compress_for_display(&stderr, &cmd_label, raw, |s| {
+                post_process_filter_output(&filter(s), &cmd_label)
+            });
             (
                 dlp::redact_with_source(&stdout, &cmd_label),
                 displayed.clone(),
@@ -135,10 +116,9 @@ pub fn execute_with_filter(bin: &str, args: &[String], mode: FilterMode) -> Resu
         }
         FilterMode::Combined(filter) => {
             let combined = join_streams(&stderr, &stdout);
-            let (displayed, r_combined) =
-                compress_for_display(&combined, &cmd_label, stdout_is_tty, |s| {
-                    post_process_filter_output(&filter(s), &cmd_label)
-                });
+            let (displayed, r_combined) = compress_for_display(&combined, &cmd_label, raw, |s| {
+                post_process_filter_output(&filter(s), &cmd_label)
+            });
             (displayed.clone(), String::new(), r_combined, displayed)
         }
         FilterMode::Distilled => {
@@ -146,12 +126,10 @@ pub fn execute_with_filter(bin: &str, args: &[String], mode: FilterMode) -> Resu
                 &format!("STDOUT:\n{stdout}\nSTDERR:\n{stderr}"),
                 &cmd_label,
             );
-            let (out, _) = compress_for_display(&stdout, &cmd_label, stdout_is_tty, |s| {
-                distiller::distill(s, None)
-            });
-            let (err, _) = compress_for_display(&stderr, &cmd_label, stderr_is_tty, |s| {
-                distiller::distill(s, None)
-            });
+            let (out, _) =
+                compress_for_display(&stdout, &cmd_label, raw, |s| distiller::distill(s, None));
+            let (err, _) =
+                compress_for_display(&stderr, &cmd_label, raw, |s| distiller::distill(s, None));
             (out.clone(), err.clone(), r_comb, format!("{out}\n{err}"))
         }
         FilterMode::PluginFilter(ref plugin) => {
@@ -159,7 +137,7 @@ pub fn execute_with_filter(bin: &str, args: &[String], mode: FilterMode) -> Resu
             match capture_mode {
                 "stderr" => {
                     let (displayed, r_stderr) =
-                        compress_for_display(&stderr, &cmd_label, stderr_is_tty, |s| {
+                        compress_for_display(&stderr, &cmd_label, raw, |s| {
                             post_process_filter_output(
                                 &plugins::filter_plugin(s, plugin),
                                 &cmd_label,
@@ -175,7 +153,7 @@ pub fn execute_with_filter(bin: &str, args: &[String], mode: FilterMode) -> Resu
                 "combined" => {
                     let combined = join_streams(&stderr, &stdout);
                     let (displayed, r_combined) =
-                        compress_for_display(&combined, &cmd_label, stdout_is_tty, |s| {
+                        compress_for_display(&combined, &cmd_label, raw, |s| {
                             post_process_filter_output(
                                 &plugins::filter_plugin(s, plugin),
                                 &cmd_label,
@@ -188,17 +166,17 @@ pub fn execute_with_filter(bin: &str, args: &[String], mode: FilterMode) -> Resu
                         &format!("STDOUT:\n{stdout}\nSTDERR:\n{stderr}"),
                         &cmd_label,
                     );
-                    let (out, _) = compress_for_display(&stdout, &cmd_label, stdout_is_tty, |s| {
+                    let (out, _) = compress_for_display(&stdout, &cmd_label, raw, |s| {
                         distiller::distill(s, None)
                     });
-                    let (err, _) = compress_for_display(&stderr, &cmd_label, stderr_is_tty, |s| {
+                    let (err, _) = compress_for_display(&stderr, &cmd_label, raw, |s| {
                         distiller::distill(s, None)
                     });
                     (out.clone(), err.clone(), r_comb, format!("{out}\n{err}"))
                 }
                 _ => {
                     let (displayed, r_stdout) =
-                        compress_for_display(&stdout, &cmd_label, stdout_is_tty, |s| {
+                        compress_for_display(&stdout, &cmd_label, raw, |s| {
                             post_process_filter_output(
                                 &plugins::filter_plugin(s, plugin),
                                 &cmd_label,
@@ -215,52 +193,40 @@ pub fn execute_with_filter(bin: &str, args: &[String], mode: FilterMode) -> Resu
         }
     };
 
-    match tracking::record(
+    let log_id = match tracking::record(
         cmd_label.trim(),
         &raw_db,
         &filtered_db,
         &raw_db,
         Some(duration_ms),
     ) {
-        Ok(log_id) => {
-            // These informational markers are only meaningful for a human at
-            // an interactive terminal. Appending them to a piped/captured
-            // stream corrupts anything treating that stream as structured
-            // data (the same #77 failure mode) — and if that captured text is
-            // later reused verbatim as an argument to another rtk-wrapped
-            // command (e.g. via shell `$(...)` substitution), the marker text
-            // itself ends up embedded in the *next* command's argv, which is
-            // the cmd-corruption anomaly tracked under REL-3.
-            if filtered_db.len() < raw_db.len() && !filtered_db.trim().is_empty() {
-                let msg = format!("\n[Full output cached. Access with: rtk show-log {log_id}]\n");
-                append_marker_if_tty(
-                    &mut out_print,
-                    &mut err_print,
-                    stdout_is_tty,
-                    stderr_is_tty,
-                    &msg,
-                );
-            }
+        Ok(id) => Some(id),
+        Err(e) => {
+            eprintln!("rtk: tracking warning: {e}");
+            None
         }
-        Err(e) => eprintln!("rtk: tracking warning: {e}"),
-    }
-
-    if let Some(warning) = tracking::check_autonomy(&filtered_db) {
-        let msg = format!("{warning}\n");
-        append_marker_if_tty(
-            &mut out_print,
-            &mut err_print,
-            stdout_is_tty,
-            stderr_is_tty,
-            &msg,
-        );
-    }
+    };
 
     if !out_print.is_empty() {
         print!("{out_print}");
     }
     if !err_print.is_empty() {
         eprint!("{err_print}");
+    }
+
+    // Informational markers always go to stderr, never mixed into out_print
+    // (stdout). Shell command substitution (`$(...)`) only captures stdout,
+    // so a marker here can never end up embedded verbatim in a later
+    // command's argv if this output is captured and reused — the REL-3
+    // cmd-corruption vector — regardless of RTK_RAW. They stay visible: to a
+    // human at a terminal, and to an agent harness that reads both streams.
+    if let Some(log_id) = log_id {
+        if filtered_db.len() < raw_db.len() && !filtered_db.trim().is_empty() {
+            eprint!("\n[Full output cached. Access with: rtk show-log {log_id}]\n");
+        }
+    }
+    if let Some(warning) = tracking::check_autonomy(&filtered_db) {
+        eprintln!("{warning}");
     }
 
     if !output.status.success() {

@@ -654,20 +654,18 @@ fn test_config_deny_add_blocks_rewrite() {
     std::fs::remove_dir_all(temp_dir).unwrap();
 }
 
-/// REL-1 (issue #77): `ls -1 <dir>` piped into a counting tool must report the
-/// real entry count, not a plausible-looking count of prose-compressed lines.
-/// `.output()` captures stdout via a pipe — exactly how a shell `| wc -l` and
-/// how an agent harness subprocess-capturing rtk's output both consume it.
+/// RTK is built to be read directly by an AI agent, which handles a
+/// compressed summary fine — so compression stays on by default (regression
+/// guard for that default, restored after briefly gating it on TTY).
 #[test]
-fn ls_filter_piped_reports_true_entry_count_issue_77() {
+fn ls_filter_compresses_by_default_for_agent_consumption() {
     let timestamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
         .as_millis();
-    let temp_dir = std::env::temp_dir().join(format!("rtk_ls77_{timestamp}"));
+    let temp_dir = std::env::temp_dir().join(format!("rtk_ls77_default_{timestamp}"));
     std::fs::create_dir_all(&temp_dir).unwrap();
-    const REAL_ENTRY_COUNT: usize = 36;
-    for i in 0..REAL_ENTRY_COUNT {
+    for i in 0..36 {
         std::fs::write(temp_dir.join(format!("file{i}.txt")), "").unwrap();
     }
 
@@ -677,29 +675,60 @@ fn ls_filter_piped_reports_true_entry_count_issue_77() {
         .expect("rtk not found");
     assert!(out.status.success());
     let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        stdout.contains("more entries"),
+        "default (no RTK_RAW) invocation should still compress a long listing for the agent: {stdout}"
+    );
+
+    std::fs::remove_dir_all(temp_dir).unwrap();
+}
+
+/// REL-1 (issue #77): `RTK_RAW=1 rtk ls -1 <dir> | wc -l` — the escape hatch
+/// an agent uses when it's about to compose rtk's output with a
+/// counting/parsing tool — must report the real entry count, never a
+/// plausible-looking count of prose-compressed lines.
+#[test]
+fn ls_filter_raw_reports_true_entry_count_issue_77() {
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_millis();
+    let temp_dir = std::env::temp_dir().join(format!("rtk_ls77_raw_{timestamp}"));
+    std::fs::create_dir_all(&temp_dir).unwrap();
+    const REAL_ENTRY_COUNT: usize = 36;
+    for i in 0..REAL_ENTRY_COUNT {
+        std::fs::write(temp_dir.join(format!("file{i}.txt")), "").unwrap();
+    }
+
+    let out = rtk_bin()
+        .env("RTK_RAW", "1")
+        .args(["ls", "-1", temp_dir.to_str().unwrap()])
+        .output()
+        .expect("rtk not found");
+    assert!(out.status.success());
+    let stdout = String::from_utf8_lossy(&out.stdout);
 
     assert!(
         !stdout.contains("more entries"),
-        "piped ls output must never be silently collapsed (#77): {stdout}"
+        "RTK_RAW=1 output must never be collapsed (#77): {stdout}"
     );
     let line_count = stdout.lines().filter(|l| !l.trim().is_empty()).count();
     assert_eq!(
         line_count, REAL_ENTRY_COUNT,
-        "wc -l-equivalent count must match the real entry count, got {line_count} in: {stdout}"
+        "wc -l-equivalent count must match the real entry count under RTK_RAW=1, got {line_count} in: {stdout}"
     );
 
     std::fs::remove_dir_all(temp_dir).unwrap();
 }
 
 /// REL-3: the "[Full output cached...]" / autonomy-warning markers are
-/// informational text for a human at a terminal. Appended to a piped stream,
-/// they are exactly the kind of extra content that — if captured via shell
-/// `$(...)` and reused as an argument to a later rtk-wrapped command — ends up
-/// embedded in that *next* command's argv (the cmd-corruption anomaly this
-/// task investigated). They must never appear when the destination isn't a
-/// real terminal, regardless of which wrapped command produced them.
+/// informational text. They must always land on stderr, never mixed into
+/// stdout — because shell command substitution (`$(...)`) only captures
+/// stdout, so a marker confined to stderr can never end up embedded verbatim
+/// in a later rtk-wrapped command's argv (the cmd-corruption anomaly this
+/// task investigated), regardless of RTK_RAW.
 #[test]
-fn wrapped_output_never_embeds_cache_marker_when_piped() {
+fn cache_marker_never_lands_in_stdout() {
     let out = rtk_bin()
         .args(["git", "log", "--oneline", "-50"])
         .output()
@@ -707,24 +736,24 @@ fn wrapped_output_never_embeds_cache_marker_when_piped() {
     let stdout = String::from_utf8_lossy(&out.stdout);
     assert!(
         !stdout.contains("Full output cached"),
-        "cache marker leaked into piped stdout: {stdout}"
+        "cache marker leaked into stdout, where $(...) could capture and replay it: {stdout}"
     );
     assert!(
         !stdout.contains("rtk show-log"),
-        "show-log hint leaked into piped stdout: {stdout}"
+        "show-log hint leaked into stdout: {stdout}"
     );
 }
 
 /// A custom `rtk filter add` secret-stripping rule is a safety control, like
-/// built-in DLP redaction — it must still run on piped/captured output even
-/// though the human-readability compression step is skipped there (#77).
+/// built-in DLP redaction — it must still run even under `RTK_RAW=1`, which
+/// only skips human-readability compression, never security filtering (#77).
 #[test]
-fn test_custom_regex_filter_still_applies_when_piped() {
+fn test_custom_regex_filter_still_applies_under_raw() {
     let timestamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
         .as_millis();
-    let temp_dir = std::env::temp_dir().join(format!("rtk_regex_filter_piped_{timestamp}"));
+    let temp_dir = std::env::temp_dir().join(format!("rtk_regex_filter_raw_{timestamp}"));
     std::fs::create_dir_all(&temp_dir).unwrap();
     std::fs::write(temp_dir.join("secret_token=ABC123XYZ.txt"), "").unwrap();
 
@@ -747,11 +776,10 @@ fn test_custom_regex_filter_still_applies_when_piped() {
         String::from_utf8_lossy(&add_out.stderr)
     );
 
-    // `.output()` captures stdout via a pipe — non-interactive, the same path
-    // this test guards against skipping the safety rule on.
     let ls_out = rtk_bin()
         .env("HOME", &temp_dir)
         .env("USERPROFILE", &temp_dir)
+        .env("RTK_RAW", "1")
         .args(["ls", "-1", temp_dir.to_str().unwrap()])
         .output()
         .expect("rtk not found");
@@ -759,7 +787,7 @@ fn test_custom_regex_filter_still_applies_when_piped() {
     let stdout = String::from_utf8_lossy(&ls_out.stdout);
     assert!(
         !stdout.contains("secret_token=ABC123XYZ"),
-        "custom regex filter must still strip secrets on piped output: {stdout}"
+        "custom regex filter must still strip secrets under RTK_RAW=1: {stdout}"
     );
 
     std::fs::remove_dir_all(temp_dir).unwrap();
