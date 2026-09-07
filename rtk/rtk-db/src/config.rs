@@ -487,6 +487,19 @@ pub fn apply_regex_filters(input: &str) -> String {
     current
 }
 
+/// Largest byte index `<= index` that lands on a UTF-8 char boundary of `s`.
+/// `str::floor_char_boundary` is nightly-only; this is the stable equivalent.
+fn floor_char_boundary(s: &str, index: usize) -> usize {
+    if index >= s.len() {
+        return s.len();
+    }
+    let mut idx = index;
+    while idx > 0 && !s.is_char_boundary(idx) {
+        idx -= 1;
+    }
+    idx
+}
+
 /// Apply savings profile settings (line cap, comments, JSON) after command filters.
 pub fn apply_profile_settings(input: &str, profile: &ProfileSettings) -> String {
     let mut lines: Vec<String> = input.lines().map(String::from).collect();
@@ -524,7 +537,11 @@ pub fn apply_profile_settings(input: &str, profile: &ProfileSettings) -> String 
             .into_iter()
             .map(|l| {
                 if l.len() > max {
-                    format!("{}…", &l[..max.saturating_sub(1)])
+                    // Truncating at a raw byte offset panics if it lands inside
+                    // a multi-byte UTF-8 char (e.g. box-drawing characters in
+                    // real-world tool output like Playwright's reporter).
+                    let cut = floor_char_boundary(&l, max.saturating_sub(1));
+                    format!("{}…", &l[..cut])
                 } else {
                     l
                 }
@@ -846,6 +863,25 @@ mod tests {
         let out = apply_profile_settings("12345678901\nshort", &profile);
         assert!(out.starts_with("123456789…"));
         assert!(out.contains("short"));
+    }
+
+    #[test]
+    fn apply_profile_settings_truncation_never_panics_on_multibyte_char() {
+        // '─' (U+2500 BOX DRAWINGS LIGHT HORIZONTAL) is 3 bytes in UTF-8.
+        // With max_line_length: 10, cutting at raw byte 9 lands inside it —
+        // panicked pre-fix ("byte index 9 is not a char boundary"), the exact
+        // crash reported from real Playwright reporter output (box-drawing
+        // table borders) via `rtk-db/src/config.rs:527`.
+        let profile = ProfileSettings {
+            max_line_length: Some(10),
+            remove_comments: None,
+            minify_json: None,
+            json_only: None,
+        };
+        let line = format!("12345678{}rest of the line", '─');
+        let out = apply_profile_settings(&line, &profile);
+        assert!(out.starts_with("12345678"));
+        assert!(out.ends_with('…'));
     }
 
     #[test]
