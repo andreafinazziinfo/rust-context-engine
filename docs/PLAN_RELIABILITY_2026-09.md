@@ -7,7 +7,7 @@
 | **Status** | ✅ Completato (REL-1, REL-2, REL-3) |
 | **Aggiornato** | 2026-09-07 |
 
-Precedente: [PLAN_CLOSURE.md](./PLAN_CLOSURE.md) (✅) · Debito collegato: [`TECHNICAL_DEBT_LEDGER.md`](../TECHNICAL_DEBT_LEDGER.md) #7
+Precedente: [PLAN_CLOSURE.md](./PLAN_CLOSURE.md) (✅) · Debito collegato: [`TECHNICAL_DEBT_LEDGER.md`](../TECHNICAL_DEBT_LEDGER.md) #7 · Decisione architetturale: [ADR-003](../ADR-003-compression-default-with-raw-opt-out.md)
 
 ---
 
